@@ -187,23 +187,21 @@ function handleLoginSuccess(user) {
   }
 }
 
-// Check for saved session
-const savedSession = localStorage.getItem('be_education_user');
-if (savedSession) {
-  let user = null;
-  try {
-    user = JSON.parse(savedSession);
-  } catch(e) {
-    localStorage.removeItem('be_education_user');
-  }
-  if (user) {
+// Check for saved session (deferred to ensure all functions are defined)
+setTimeout(() => {
+  const savedSession = localStorage.getItem('be_education_user');
+  if (savedSession) {
+    let user = null;
     try {
-      handleLoginSuccess(user);
+      user = JSON.parse(savedSession);
     } catch(e) {
-      console.error('Error during login initialization:', e);
+      localStorage.removeItem('be_education_user');
+    }
+    if (user) {
+      handleLoginSuccess(user);
     }
   }
-}
+}, 0);
 
 document.getElementById('real-login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
