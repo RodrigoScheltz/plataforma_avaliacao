@@ -890,7 +890,7 @@ window.renderEvaluatorDashboard = async function() {
     cutoffDate.setDate(cutoffDate.getDate() - parseInt(dateFilterVal));
   }
 
-  // Pegar todas as provas (compartilhadas entre gestores)
+  // Pegar as provas (agora todas as provas são visíveis para todos os gestores)
   const { data: myTests } = await supabase.from('tests').select('*');
   const myTestIds = myTests && myTests.length > 0 ? myTests.map(t => t.id) : [];
   
@@ -1571,7 +1571,7 @@ window.renderEvaluateView = async function() {
   
   grid.innerHTML = '';
   if (!myTests || myTests.length === 0) {
-    grid.innerHTML = '<p>Nenhuma prova cadastrada ainda.</p>';
+    grid.innerHTML = '<p>Nenhuma prova cadastrada no sistema ainda.</p>';
     return;
   }
 
