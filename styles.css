@@ -627,3 +627,48 @@ select.input-control option {
   from { opacity: 1; }
   to { opacity: 0; }
 }
+
+/* Responsive table wrapper */
+.glass-panel {
+  overflow-x: auto;
+}
+
+.data-table {
+  min-width: 600px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .main-content {
+    padding: 24px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 16px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .view h2 {
+    font-size: 20px;
+  }
+
+  .data-table th, .data-table td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .glass-panel {
+    padding: 16px;
+    border-radius: 12px;
+  }
+}
