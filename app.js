@@ -253,6 +253,13 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
   
   const name = document.getElementById('new-user-name').value;
   const email = document.getElementById('new-user-email').value;
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showToast('Por favor, insira um e-mail válido.', 'error');
+    return;
+  }
+  
   const password = document.getElementById('new-user-password').value;
   const role = document.getElementById('new-user-role').value;
   let profile = document.getElementById('new-user-profile').value;
