@@ -135,6 +135,57 @@ window.togglePasswordVisibility = function() {
   }
 };
 
+let usersChannel = null;
+function setupRealtime() {
+  if (usersChannel) return;
+  usersChannel = supabase.channel('public:users')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'users' },
+      (payload) => {
+        if (document.getElementById('manage-users-view').classList.contains('active')) {
+          renderUsers();
+        }
+      }
+    )
+    .subscribe();
+}
+
+function handleLoginSuccess(user) {
+  State.currentUser = user;
+  loginScreen.classList.add('hidden');
+  appScreen.classList.remove('hidden');
+  
+  // Update Sidebar
+  document.getElementById('user-name').innerText = user.name;
+  document.getElementById('user-role').innerText = user.role === 'EVALUATOR' ? 'Gestor' : 'Aluno';
+  document.getElementById('user-avatar').innerText = user.name.charAt(0).toUpperCase();
+
+  if (State.currentUser.role === 'EVALUATOR') {
+    document.getElementById('evaluator-nav').style.display = 'flex';
+    document.getElementById('student-nav').style.display = 'none';
+    document.body.classList.remove('no-copy');
+    setupRealtime();
+    showView('dashboard-view');
+  } else {
+    document.getElementById('evaluator-nav').style.display = 'none';
+    document.getElementById('student-nav').style.display = 'flex';
+    document.body.classList.add('no-copy');
+    showView('student-dashboard-view');
+  }
+}
+
+// Check for saved session
+const savedSession = localStorage.getItem('be_education_user');
+if (savedSession) {
+  try {
+    const user = JSON.parse(savedSession);
+    handleLoginSuccess(user);
+  } catch(e) {
+    localStorage.removeItem('be_education_user');
+  }
+}
+
 document.getElementById('real-login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   
@@ -165,30 +216,13 @@ document.getElementById('real-login-form').addEventListener('submit', async (e) 
   }
   
   const user = users[0];
-  State.currentUser = user;
-  loginScreen.classList.add('hidden');
-  appScreen.classList.remove('hidden');
-  
-  // Update Sidebar
-  document.getElementById('user-name').innerText = user.name;
-  document.getElementById('user-role').innerText = user.role === 'EVALUATOR' ? 'Gestor' : 'Aluno';
-  document.getElementById('user-avatar').innerText = user.name.charAt(0).toUpperCase();
-
-  if (State.currentUser.role === 'EVALUATOR') {
-    document.getElementById('evaluator-nav').style.display = 'flex';
-    document.getElementById('student-nav').style.display = 'none';
-    document.body.classList.remove('no-copy');
-    showView('dashboard-view');
-  } else {
-    document.getElementById('evaluator-nav').style.display = 'none';
-    document.getElementById('student-nav').style.display = 'flex';
-    document.body.classList.add('no-copy');
-    showView('student-dashboard-view');
-  }
+  localStorage.setItem('be_education_user', JSON.stringify(user));
+  handleLoginSuccess(user);
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => {
   State.currentUser = null;
+  localStorage.removeItem('be_education_user');
   appScreen.classList.add('hidden');
   loginScreen.classList.remove('hidden');
 });
