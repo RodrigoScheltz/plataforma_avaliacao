@@ -890,8 +890,8 @@ window.renderEvaluatorDashboard = async function() {
     cutoffDate.setDate(cutoffDate.getDate() - parseInt(dateFilterVal));
   }
 
-  // Pegar as provas criadas por este avaliador
-  const { data: myTests } = await supabase.from('tests').select('*').eq('created_by', State.currentUser.id);
+  // Pegar todas as provas (compartilhadas entre gestores)
+  const { data: myTests } = await supabase.from('tests').select('*');
   const myTestIds = myTests && myTests.length > 0 ? myTests.map(t => t.id) : [];
   
   // Pegar as submissões corrigidas
@@ -1566,12 +1566,12 @@ window.renderEvaluateView = async function() {
   const grid = document.getElementById('evaluate-tests-grid');
   grid.innerHTML = '<p><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</p>';
   
-  const { data: myTests } = await supabase.from('tests').select('*').eq('created_by', State.currentUser.id);
+  const { data: myTests } = await supabase.from('tests').select('*');
   const { data: mySubmissions } = await supabase.from('submissions').select('test_id, needs_grading');
   
   grid.innerHTML = '';
   if (!myTests || myTests.length === 0) {
-    grid.innerHTML = '<p>Nenhuma prova criada por você ainda.</p>';
+    grid.innerHTML = '<p>Nenhuma prova cadastrada ainda.</p>';
     return;
   }
 
