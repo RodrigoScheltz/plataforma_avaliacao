@@ -198,13 +198,12 @@
         </div>
 
         <div class="glass-panel" style="margin-bottom: 24px;">
-          <label>Selecione o Colaborador</label>
-          <div style="display: flex; gap: 8px; max-width: 500px;">
-            <input type="text" id="perf-student-search-input" class="input-control" placeholder="Buscar por nome..." style="flex: 1;" onkeyup="filterPerfStudents(this.value)">
-            <select id="perf-student-select" class="input-control" style="flex: 2;" onchange="viewStudentPerformance(this.value)">
-              <option value="">-- Selecione --</option>
+          <div class="input-group" style="max-width: 400px; margin: 0;">
+            <label for="perf-student-search">Selecione o Colaborador</label>
+            <input type="text" id="perf-student-search" class="input-control" placeholder="Buscar colaborador..." list="perf-students-list" autocomplete="off" oninput="handleStudentSearch(this.value)">
+            <datalist id="perf-students-list">
               <!-- Preenchido via JS -->
-            </select>
+            </datalist>
           </div>
         </div>
         

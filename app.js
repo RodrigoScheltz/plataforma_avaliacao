@@ -108,15 +108,15 @@ window.showView = async function(viewId) {
   }
   
   if (viewId === 'student-performance-view') {
-    const studentSelect = document.getElementById('perf-student-select');
-    if (studentSelect) {
+    const studentDatalist = document.getElementById('perf-students-list');
+    if (studentDatalist) {
       const { data: users } = await supabase.from('users').select('*').eq('role', 'STUDENT').order('name', { ascending: true });
-      window.allPerfStudents = users || [];
-      renderPerfStudentOptions(window.allPerfStudents);
+      window.perfStudents = users || [];
       
+      studentDatalist.innerHTML = window.perfStudents.map(s => `<option value="${s.name} - ${s.profile}"></option>`).join('');
       // Reset view
       document.getElementById('perf-content-area').style.display = 'none';
-      const searchInput = document.getElementById('perf-student-search-input');
+      const searchInput = document.getElementById('perf-student-search');
       if (searchInput) searchInput.value = '';
     }
   }
@@ -435,19 +435,17 @@ window.renderUsers = async function() {
 let perfEvolChart = null;
 let perfCompChart = null;
 
-window.renderPerfStudentOptions = function(users) {
-  const studentSelect = document.getElementById('perf-student-select');
-  if (studentSelect) {
-    studentSelect.innerHTML = '<option value="">-- Selecione --</option>' + 
-      users.map(s => `<option value="${s.id}">${s.name} (${s.profile})</option>`).join('');
+window.handleStudentSearch = function(value) {
+  if (!value || !window.perfStudents) {
+    document.getElementById('perf-content-area').style.display = 'none';
+    return;
   }
-};
-
-window.filterPerfStudents = function(term) {
-  if (!window.allPerfStudents) return;
-  term = term.toLowerCase();
-  const filtered = window.allPerfStudents.filter(s => s.name.toLowerCase().includes(term));
-  renderPerfStudentOptions(filtered);
+  const user = window.perfStudents.find(s => `${s.name} - ${s.profile}` === value);
+  if (user) {
+    viewStudentPerformance(user.id);
+  } else {
+    document.getElementById('perf-content-area').style.display = 'none';
+  }
 };
 
 window.deleteUser = function(userId) {
