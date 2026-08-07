@@ -302,7 +302,7 @@ select.input-control option {
   white-space: nowrap;
 }
 
-.sidebar.collapsed .user-info-text {
+.sidebar.collapsed .user-info {
   display: none;
 }
 
