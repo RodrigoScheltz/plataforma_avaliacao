@@ -241,6 +241,7 @@ document.getElementById('logout-btn').addEventListener('click', () => {
   State.currentUser = null;
   localStorage.removeItem('be_education_user');
   localStorage.removeItem('be_education_active_view');
+  document.documentElement.classList.remove('has-session');
   appScreen.classList.add('hidden');
   loginScreen.classList.remove('hidden');
 });

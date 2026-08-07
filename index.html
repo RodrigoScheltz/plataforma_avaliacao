@@ -9,6 +9,16 @@
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script>
+    // Pre-hide login screen to prevent flash if user has a saved session
+    if (localStorage.getItem('be_education_user')) {
+      document.documentElement.classList.add('has-session');
+    }
+  </script>
+  <style>
+    .has-session #login-screen { display: none !important; }
+    .has-session #app { display: flex !important; }
+  </style>
 </head>
 <body>
 
