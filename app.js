@@ -81,6 +81,8 @@ window.showView = function(viewId) {
   const activeNav = document.querySelector(`.nav-item[data-target="${viewId}"]`);
   if (activeNav) activeNav.classList.add('active');
 
+  localStorage.setItem('be_education_active_view', viewId);
+
   // Refresh data based on view
   if (viewId === 'manage-users-view') renderUsers();
   if (viewId === 'manage-teams-view') renderTeams();
@@ -166,12 +168,16 @@ function handleLoginSuccess(user) {
     document.getElementById('student-nav').style.display = 'none';
     document.body.classList.remove('no-copy');
     setupRealtime();
-    showView('dashboard-view');
+    const savedView = localStorage.getItem('be_education_active_view') || 'dashboard-view';
+    const validEvaluatorViews = ['dashboard-view', 'manage-users-view', 'manage-teams-view', 'manage-tests-view', 'create-test-view', 'evaluate-view', 'student-performance-view'];
+    showView(validEvaluatorViews.includes(savedView) ? savedView : 'dashboard-view');
   } else {
     document.getElementById('evaluator-nav').style.display = 'none';
     document.getElementById('student-nav').style.display = 'flex';
     document.body.classList.add('no-copy');
-    showView('student-dashboard-view');
+    const savedView = localStorage.getItem('be_education_active_view') || 'student-dashboard-view';
+    const validStudentViews = ['student-dashboard-view', 'student-history-view'];
+    showView(validStudentViews.includes(savedView) ? savedView : 'student-dashboard-view');
   }
 }
 
@@ -223,6 +229,7 @@ document.getElementById('real-login-form').addEventListener('submit', async (e) 
 document.getElementById('logout-btn').addEventListener('click', () => {
   State.currentUser = null;
   localStorage.removeItem('be_education_user');
+  localStorage.removeItem('be_education_active_view');
   appScreen.classList.add('hidden');
   loginScreen.classList.remove('hidden');
 });
