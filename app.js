@@ -160,7 +160,7 @@ document.getElementById('real-login-form').addEventListener('submit', async (e) 
   }
 
   if (error || !users || users.length === 0) {
-    showToast('E-mail ou senha incorretos.', 'error');
+    showToast('Login ou senha incorretos.', 'error');
     return;
   }
   
@@ -252,11 +252,10 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   
   const name = document.getElementById('new-user-name').value;
-  const email = document.getElementById('new-user-email').value;
+  const email = document.getElementById('new-user-email').value.trim();
   
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    showToast('Por favor, insira um e-mail válido.', 'error');
+  if (/\s/.test(email)) {
+    showToast('O login não pode conter espaços em branco.', 'error');
     return;
   }
   
@@ -286,7 +285,7 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
     // Verificar e-mail existente
     const { data: existing } = await supabase.from('users').select('id').eq('email', email).single();
     if (existing) {
-      showToast('E-mail já cadastrado', 'error');
+      showToast('Login já cadastrado', 'error');
       btn.innerHTML = originalText;
       btn.disabled = false;
       return;

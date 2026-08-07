@@ -22,8 +22,8 @@
       </div>
       <form id="real-login-form" style="display: flex; flex-direction: column; gap: 16px;">
         <div class="input-group" style="margin: 0; text-align: left;">
-          <label for="login-email">E-mail</label>
-          <input type="email" id="login-email" class="input-control" required placeholder="seu.email@empresa.com">
+          <label for="login-email">Login (Usuário)</label>
+          <input type="text" id="login-email" class="input-control" required placeholder="seu.login">
         </div>
         <div class="input-group" style="margin: 0; text-align: left; position: relative;">
           <label for="login-password">Senha</label>
@@ -153,7 +153,7 @@
         <div class="glass-panel">
           <div style="display: flex; gap: 16px; margin-bottom: 16px;">
             <div class="input-group" style="flex: 2; margin: 0;">
-              <input type="text" id="search-users" class="input-control" placeholder="Buscar por nome ou e-mail..." onkeyup="renderUsers()">
+              <input type="text" id="search-users" class="input-control" placeholder="Buscar por nome ou login..." onkeyup="renderUsers()">
             </div>
             <div class="input-group" style="flex: 1; margin: 0;">
               <select id="filter-users-role" class="input-control" onchange="renderUsers()">
@@ -167,7 +167,7 @@
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>E-mail</th>
+                <th>Login</th>
                 <th>Perfil</th>
                 <th>Nível</th>
                 <th>Time</th>
@@ -441,8 +441,8 @@
           <input type="text" id="new-user-name" class="input-control" required>
         </div>
         <div class="input-group">
-          <label>E-mail</label>
-          <input type="email" id="new-user-email" class="input-control" required>
+          <label>Login</label>
+          <input type="text" id="new-user-email" class="input-control" required placeholder="Ex: rodrigo.scheltz">
         </div>
         <div class="input-group">
           <label>Senha</label>
