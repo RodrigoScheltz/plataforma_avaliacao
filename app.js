@@ -110,11 +110,14 @@ window.showView = async function(viewId) {
   if (viewId === 'student-performance-view') {
     const studentSelect = document.getElementById('perf-student-select');
     if (studentSelect) {
-      const { data: users } = await supabase.from('users').select('*').eq('role', 'STUDENT');
-      studentSelect.innerHTML = '<option value="">-- Selecione --</option>' + 
-        (users || []).map(s => `<option value="${s.id}">${s.name} (${s.profile})</option>`).join('');
+      const { data: users } = await supabase.from('users').select('*').eq('role', 'STUDENT').order('name', { ascending: true });
+      window.allPerfStudents = users || [];
+      renderPerfStudentOptions(window.allPerfStudents);
+      
       // Reset view
       document.getElementById('perf-content-area').style.display = 'none';
+      const searchInput = document.getElementById('perf-student-search-input');
+      if (searchInput) searchInput.value = '';
     }
   }
 }
@@ -395,7 +398,7 @@ window.renderUsers = async function() {
   const searchStr = searchInput ? searchInput.value.toLowerCase() : '';
   const roleFilter = roleSelect ? roleSelect.value : 'TODOS';
   
-  let query = supabase.from('users').select('*, teams(name)');
+  let query = supabase.from('users').select('*, teams(name)').order('name', { ascending: true });
   if (roleFilter !== 'TODOS') query = query.eq('role', roleFilter);
   if (searchStr) query = query.or(`name.ilike.%${searchStr}%,email.ilike.%${searchStr}%`);
   
@@ -404,6 +407,8 @@ window.renderUsers = async function() {
     tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar usuários.</td></tr>';
     return;
   }
+  
+  users.sort((a, b) => a.name.localeCompare(b.name));
   
   tbody.innerHTML = '';
   users.forEach(u => {
@@ -429,6 +434,21 @@ window.renderUsers = async function() {
 // Student Performance View
 let perfEvolChart = null;
 let perfCompChart = null;
+
+window.renderPerfStudentOptions = function(users) {
+  const studentSelect = document.getElementById('perf-student-select');
+  if (studentSelect) {
+    studentSelect.innerHTML = '<option value="">-- Selecione --</option>' + 
+      users.map(s => `<option value="${s.id}">${s.name} (${s.profile})</option>`).join('');
+  }
+};
+
+window.filterPerfStudents = function(term) {
+  if (!window.allPerfStudents) return;
+  term = term.toLowerCase();
+  const filtered = window.allPerfStudents.filter(s => s.name.toLowerCase().includes(term));
+  renderPerfStudentOptions(filtered);
+};
 
 window.deleteUser = function(userId) {
   showConfirm('Atenção: Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.', async () => {

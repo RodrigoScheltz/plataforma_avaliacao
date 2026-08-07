@@ -198,9 +198,10 @@
         </div>
 
         <div class="glass-panel" style="margin-bottom: 24px;">
-          <div class="input-group" style="max-width: 400px; margin: 0;">
-            <label for="perf-student-select">Selecione o Colaborador</label>
-            <select id="perf-student-select" class="input-control" onchange="viewStudentPerformance(this.value)">
+          <label>Selecione o Colaborador</label>
+          <div style="display: flex; gap: 8px; max-width: 500px;">
+            <input type="text" id="perf-student-search-input" class="input-control" placeholder="Buscar por nome..." style="flex: 1;" onkeyup="filterPerfStudents(this.value)">
+            <select id="perf-student-select" class="input-control" style="flex: 2;" onchange="viewStudentPerformance(this.value)">
               <option value="">-- Selecione --</option>
               <!-- Preenchido via JS -->
             </select>
@@ -590,6 +591,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=2"></script>
 </body>
 </html>
