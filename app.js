@@ -48,6 +48,12 @@ import { supabase } from './supabaseClient.js';
 // State Management
 window.State = {
   currentUser: null,
+  db: {
+    users: [],
+    teams: [],
+    tests: [],
+    submissions: []
+  }
 };
 // --- Anti-Cheating Mechanism ---
 document.addEventListener('contextmenu', (e) => {
@@ -184,11 +190,18 @@ function handleLoginSuccess(user) {
 // Check for saved session
 const savedSession = localStorage.getItem('be_education_user');
 if (savedSession) {
+  let user = null;
   try {
-    const user = JSON.parse(savedSession);
-    handleLoginSuccess(user);
+    user = JSON.parse(savedSession);
   } catch(e) {
     localStorage.removeItem('be_education_user');
+  }
+  if (user) {
+    try {
+      handleLoginSuccess(user);
+    } catch(e) {
+      console.error('Error during login initialization:', e);
+    }
   }
 }
 
