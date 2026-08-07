@@ -221,6 +221,19 @@ document.getElementById('new-user-profile').addEventListener('change', (e) => {
   }
 });
 
+document.getElementById('new-user-role').addEventListener('change', (e) => {
+  const profileGroup = document.getElementById('profile-group');
+  const levelGroup = document.getElementById('level-group');
+  if (e.target.value === 'EVALUATOR') {
+    profileGroup.style.display = 'none';
+    levelGroup.style.display = 'none';
+  } else {
+    profileGroup.style.display = '';
+    levelGroup.style.display = '';
+    document.getElementById('new-user-profile').dispatchEvent(new Event('change'));
+  }
+});
+
 // Manage Users
 let editingUserId = null;
 
@@ -230,6 +243,7 @@ window.openNewUserModal = function() {
   const submitBtn = document.querySelector('#user-form button[type="submit"]');
   if (submitBtn) submitBtn.innerText = 'Adicionar Usuário';
   document.getElementById('new-user-password').required = true;
+  document.getElementById('new-user-role').dispatchEvent(new Event('change'));
   document.getElementById('new-user-profile').dispatchEvent(new Event('change'));
   openModal('user-modal');
 };
@@ -241,9 +255,14 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
   const email = document.getElementById('new-user-email').value;
   const password = document.getElementById('new-user-password').value;
   const role = document.getElementById('new-user-role').value;
-  const profile = document.getElementById('new-user-profile').value;
-  const level = document.getElementById('new-user-level').value;
+  let profile = document.getElementById('new-user-profile').value;
+  let level = document.getElementById('new-user-level').value;
   const team_id = document.getElementById('new-user-team').value || null;
+
+  if (role === 'EVALUATOR') {
+    profile = '-';
+    level = '-';
+  }
 
   const btn = e.target.querySelector('button[type="submit"]');
   const originalText = btn.innerText;
@@ -297,6 +316,8 @@ window.editUser = async function(userId) {
   
   document.getElementById('new-user-level').value = user.level;
   document.getElementById('new-user-team').value = user.team_id || '';
+  
+  document.getElementById('new-user-role').dispatchEvent(new Event('change'));
   
   const submitBtn = document.querySelector('#user-form button[type="submit"]');
   if (submitBtn) submitBtn.innerText = 'Salvar Alterações';
