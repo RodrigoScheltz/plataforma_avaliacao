@@ -78,7 +78,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Navigation Logic
-window.showView = function(viewId) {
+window.showView = async function(viewId) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const viewEl = document.getElementById(viewId);
   if (viewEl) viewEl.classList.add('active');
@@ -101,17 +101,18 @@ window.showView = function(viewId) {
   if (viewId === 'create-test-view') {
     const teamSelect = document.getElementById('test-target-team');
     if (teamSelect) {
+      const { data: teams } = await supabase.from('teams').select('*');
       teamSelect.innerHTML = '<option value="TODOS">Todos os times</option>' + 
-        State.db.teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        (teams || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
     }
   }
   
   if (viewId === 'student-performance-view') {
     const studentSelect = document.getElementById('perf-student-select');
     if (studentSelect) {
-      const students = State.db.users.filter(u => u.role === 'STUDENT');
+      const { data: users } = await supabase.from('users').select('*').eq('role', 'STUDENT');
       studentSelect.innerHTML = '<option value="">-- Selecione --</option>' + 
-        students.map(s => `<option value="${s.id}">${s.name} (${s.profile})</option>`).join('');
+        (users || []).map(s => `<option value="${s.id}">${s.name} (${s.profile})</option>`).join('');
       // Reset view
       document.getElementById('perf-content-area').style.display = 'none';
     }
@@ -247,12 +248,13 @@ document.getElementById('logout-btn').addEventListener('click', () => {
 });
 
 // Modals
-window.openModal = function(id) {
+window.openModal = async function(id) {
   document.getElementById(id).classList.add('active');
   if (id === 'user-modal') {
     const teamSelect = document.getElementById('new-user-team');
     teamSelect.innerHTML = '<option value="">Sem time</option>';
-    State.db.teams.forEach(t => {
+    const { data: teams } = await supabase.from('teams').select('*');
+    (teams || []).forEach(t => {
       teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
   }
@@ -437,30 +439,36 @@ window.deleteUser = function(userId) {
   });
 };
 
-window.viewStudentPerformance = function(userId) {
+window.viewStudentPerformance = async function(userId) {
   if (!userId) {
     document.getElementById('perf-content-area').style.display = 'none';
     return;
   }
   
-  const user = State.db.users.find(u => u.id === userId);
+  const { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
   if (!user) return;
   
   document.getElementById('perf-content-area').style.display = 'block';
   
-  const team = State.db.teams.find(t => t.id === user.teamId);
+  const { data: teams } = await supabase.from('teams').select('*');
+  const team = (teams || []).find(t => t.id === user.team_id);
   document.getElementById('perf-student-name').innerText = user.name;
-  document.getElementById('perf-student-info').innerText = `${user.profile} / ${user.level} ${team ? '- ' + team.name : ''}`;
+  document.getElementById('perf-student-info').innerText = `${user.profile || '-'} / ${user.level || '-'} ${team ? '- ' + team.name : ''}`;
   
   // Submissions for this user
-  const subs = State.db.submissions.filter(s => s.studentId === userId);
-  document.getElementById('perf-kpi-total').innerText = subs.length;
+  const { data: subs } = await supabase.from('submissions').select('*').eq('student_id', userId);
+  const submissions = subs || [];
+  document.getElementById('perf-kpi-total').innerText = submissions.length;
+  
+  // Fetch all tests for reference
+  const { data: allTests } = await supabase.from('tests').select('*');
+  const tests = allTests || [];
   
   // Calculate average
   let totalScore = 0;
   let maxScore = 0;
-  subs.forEach(s => {
-    const test = State.db.tests.find(t => t.id === s.testId);
+  submissions.forEach(s => {
+    const test = tests.find(t => t.id === s.test_id);
     if (test) {
       totalScore += s.score;
       maxScore += test.questions.length;
@@ -473,11 +481,11 @@ window.viewStudentPerformance = function(userId) {
   // Render History Table
   const tbody = document.getElementById('perf-history-tbody');
   tbody.innerHTML = '';
-  subs.forEach(s => {
-    const test = State.db.tests.find(t => t.id === s.testId);
+  submissions.forEach(s => {
+    const test = tests.find(t => t.id === s.test_id);
     if (!test) return;
-    const dateStr = new Date(s.submittedAt).toLocaleDateString('pt-BR');
-    const isEvaluated = !s.needsGrading;
+    const dateStr = new Date(s.submitted_at || s.submittedAt).toLocaleDateString('pt-BR');
+    const isEvaluated = !s.needs_grading;
     
     tbody.innerHTML += `
       <tr>
@@ -495,13 +503,13 @@ window.viewStudentPerformance = function(userId) {
   if (perfCompChart) perfCompChart.destroy();
   
   // Evolution Chart (Score % per submission over time)
-  const sortedSubs = [...subs].sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
+  const sortedSubs = [...submissions].sort((a, b) => new Date(a.submitted_at || a.submittedAt) - new Date(b.submitted_at || b.submittedAt));
   const labels = sortedSubs.map(s => {
-    const t = State.db.tests.find(t => t.id === s.testId);
+    const t = tests.find(t => t.id === s.test_id);
     return t ? t.title.substring(0, 10) + '...' : 'Prova';
   });
   const data = sortedSubs.map(s => {
-    const t = State.db.tests.find(t => t.id === s.testId);
+    const t = tests.find(t => t.id === s.test_id);
     const m = t ? t.questions.length : 1;
     return (s.score / m) * 100;
   });
@@ -528,10 +536,10 @@ window.viewStudentPerformance = function(userId) {
   });
   
   // Comparison Chart (Student Avg vs Company Avg)
-  const allSubs = State.db.submissions;
+  const { data: allSubs } = await supabase.from('submissions').select('*');
   let cTotal = 0, cMax = 0;
-  allSubs.forEach(s => {
-    const t = State.db.tests.find(t => t.id === s.testId);
+  (allSubs || []).forEach(s => {
+    const t = tests.find(t => t.id === s.test_id);
     if (t) {
       cTotal += s.score;
       cMax += t.questions.length;
@@ -1200,9 +1208,12 @@ window.deleteTest = function(id) {
   });
 };
 
-window.downloadTestAsDoc = function(id) {
-  const test = State.db.tests.find(t => t.id === id);
-  if (!test) return;
+window.downloadTestAsDoc = async function(id) {
+  const { data: test } = await supabase.from('tests').select('*').eq('id', id).single();
+  if (!test) {
+    showToast('Prova não encontrada.', 'error');
+    return;
+  }
 
   let docContent = `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -1221,7 +1232,7 @@ window.downloadTestAsDoc = function(id) {
     </head>
     <body>
       <h1>${test.title}</h1>
-      <p style="text-align: center;"><strong>Data de Criação:</strong> ${new Date(test.createdAt).toLocaleDateString()}</p>
+      <p style="text-align: center;"><strong>Data de Criação:</strong> ${new Date(test.created_at).toLocaleDateString()}</p>
       <hr>
   `;
 
@@ -1246,12 +1257,11 @@ window.downloadTestAsDoc = function(id) {
 
   docContent += `</body></html>`;
 
-  // Prefix with UTF-8 BOM so Word recognizes accents correctly
-  const blob = new Blob(['\\ufeff', docContent], { type: "application/msword;charset=utf-8" });
+  const blob = new Blob(['\ufeff', docContent], { type: "application/msword;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Prova_${test.title.replace(/\\s+/g, '_')}.doc`;
+  a.download = `Prova_${test.title.replace(/\s+/g, '_')}.doc`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
