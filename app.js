@@ -786,7 +786,7 @@ document.getElementById('parse-test-btn').addEventListener('click', () => {
   let currentQ = null;
 
   lines.forEach(line => {
-    const isQuestionMatch = line.match(/^(\d+\.\s*|Pergunta \d+:\s*)/i);
+    const isQuestionMatch = line.match(/^(\d+[\.\)]\s*|Pergunta \d+:\s*)/i);
     if (isQuestionMatch) {
       if (currentQ) questions.push(currentQ);
       
@@ -821,6 +821,7 @@ function renderParsedPreview() {
   
   if (!currentParsedData || currentParsedData.length === 0) {
     container.innerHTML = '<p>Nenhuma pergunta reconhecida. Verifique o formato.</p>';
+    document.getElementById('parsed-result').classList.remove('hidden');
     return;
   }
 
@@ -1178,14 +1179,59 @@ window.renderTests = async function() {
           <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="downloadTestAsDoc('${t.id}')" title="Baixar Prova (Word)">
             <i class="fa-solid fa-download"></i>
           </button>
-          <button class="btn ${t.status === 'inactive' ? 'btn-success' : 'btn-danger'}" style="padding: 4px 8px; font-size: 12px;" onclick="toggleTestStatus('${t.id}')">
-            ${t.status === 'inactive' ? 'Ativar' : 'Desativar'}
+          <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="editTestName('${t.id}')" title="Editar Nome da Prova">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          <button class="btn ${t.status === 'inactive' ? 'btn-success' : 'btn-warning'}" style="padding: 4px 8px; font-size: 12px;" onclick="toggleTestStatus('${t.id}')" title="${t.status === 'inactive' ? 'Ativar' : 'Desativar'}">
+            <i class="fa-solid ${t.status === 'inactive' ? 'fa-play' : 'fa-pause'}"></i>
+          </button>
+          <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="deleteTest('${t.id}')" title="Excluir Prova">
+            <i class="fa-solid fa-trash"></i>
           </button>
         </td>
       </tr>
     `;
   });
 };
+
+window.deleteTest = function(id) {
+  showConfirm('Atenção: Tem certeza que deseja excluir esta prova DEFINITIVAMENTE? Esta ação não pode ser desfeita.', async () => {
+    await supabase.from('submissions').delete().eq('test_id', id);
+    await supabase.from('tests').delete().eq('id', id);
+    showToast('Prova excluída com sucesso!', 'success');
+    renderTests();
+  });
+};
+
+window.editTestName = async function(id) {
+  const { data: test } = await supabase.from('tests').select('id, title').eq('id', id).single();
+  if (!test) return;
+  document.getElementById('edit-test-id').value = test.id;
+  document.getElementById('edit-test-title-input').value = test.title;
+  openModal('edit-test-modal');
+};
+
+document.getElementById('edit-test-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('edit-test-id').value;
+  const newTitle = document.getElementById('edit-test-title-input').value;
+  
+  if (newTitle.trim()) {
+    const btn = e.target.querySelector('button[type="submit"]');
+    const originalText = btn.innerText;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+    btn.disabled = true;
+
+    await supabase.from('tests').update({ title: newTitle.trim() }).eq('id', id);
+    
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    
+    renderTests();
+    closeModal('edit-test-modal');
+    showToast('Nome da prova atualizado!', 'success');
+  }
+});
 
 window.viewTestDetails = async function(id) {
   const { data: test } = await supabase.from('tests').select('*').eq('id', id).single();
