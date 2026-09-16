@@ -110,7 +110,7 @@ window.showView = async function(viewId) {
   if (viewId === 'student-performance-view') {
     const studentDatalist = document.getElementById('perf-students-list');
     if (studentDatalist) {
-      const { data: users } = await supabase.from('users').select('*').eq('role', 'STUDENT').order('name', { ascending: true });
+      const { data: users } = await supabase.from('users').select('id, name, email, role, profile, level, team_id').eq('role', 'STUDENT').order('name', { ascending: true });
       window.perfStudents = users || [];
       
       studentDatalist.innerHTML = window.perfStudents.map(s => `<option value="${s.name} - ${s.profile}"></option>`).join('');
@@ -218,11 +218,7 @@ document.getElementById('real-login-form').addEventListener('submit', async (e) 
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Entrando...';
   btn.disabled = true;
 
-  const { data: users, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
-    .eq('password', pass);
+  const { data: users, error } = await supabase.rpc('login_user', { p_email: email, p_password: pass }).select('id, name, email, role, profile, level, team_id');
 
   btn.innerHTML = originalText;
   btn.disabled = false;
@@ -362,7 +358,7 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
 });
 
 window.editUser = async function(userId) {
-  const { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
+  const { data: user } = await supabase.from('users').select('id, name, email, role, profile, level, team_id').eq('id', userId).single();
   if (!user) return;
   
   editingUserId = user.id;
@@ -398,7 +394,7 @@ window.renderUsers = async function() {
   const searchStr = searchInput ? searchInput.value.toLowerCase() : '';
   const roleFilter = roleSelect ? roleSelect.value : 'TODOS';
   
-  let query = supabase.from('users').select('*, teams(name)').order('name', { ascending: true });
+  let query = supabase.from('users').select('id, name, email, role, profile, level, team_id, teams(name)').order('name', { ascending: true });
   if (roleFilter !== 'TODOS') query = query.eq('role', roleFilter);
   if (searchStr) query = query.or(`name.ilike.%${searchStr}%,email.ilike.%${searchStr}%`);
   
@@ -463,7 +459,7 @@ window.viewStudentPerformance = async function(userId) {
     return;
   }
   
-  const { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
+  const { data: user } = await supabase.from('users').select('id, name, email, role, profile, level, team_id').eq('id', userId).single();
   if (!user) return;
   
   document.getElementById('perf-content-area').style.display = 'block';
@@ -612,7 +608,7 @@ window.renderTeams = async function() {
   grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando times...</p>';
   
   const { data: teams, error: tError } = await supabase.from('teams').select('*');
-  const { data: users, error: uError } = await supabase.from('users').select('*');
+  const { data: users, error: uError } = await supabase.from('users').select('id, name, email, role, profile, level, team_id');
   
   if (tError || uError) {
     grid.innerHTML = '<p>Erro ao carregar times.</p>';
@@ -692,7 +688,7 @@ window.openAddMemberModal = async function(teamId) {
   select.innerHTML = '<option value="">Carregando...</option>';
   openModal('add-member-modal');
   
-  const { data: availableUsers } = await supabase.from('users').select('*').eq('role', 'STUDENT').neq('team_id', team.id);
+  const { data: availableUsers } = await supabase.from('users').select('id, name, email, role, profile, level, team_id').eq('role', 'STUDENT').neq('team_id', team.id);
   
   select.innerHTML = '';
   if (!availableUsers || availableUsers.length === 0) {
@@ -921,7 +917,7 @@ window.renderEvaluatorDashboard = async function() {
   }
   
   // Pegar usuários e times para o chart
-  const { data: allUsers } = await supabase.from('users').select('*');
+  const { data: allUsers } = await supabase.from('users').select('id, name, email, role, profile, level, team_id');
   const { data: allTeams } = await supabase.from('teams').select('*');
   
   if (cutoffDate) {
