@@ -62,6 +62,7 @@
         <a class="nav-item" data-target="manage-users-view"><i class="fa-solid fa-users" style="width: 20px; text-align: center;"></i> <span class="nav-text">Gestão de Usuários</span></a>
         <a class="nav-item" data-target="manage-teams-view"><i class="fa-solid fa-layer-group" style="width: 20px; text-align: center;"></i> <span class="nav-text">Times</span></a>
         <a class="nav-item" data-target="manage-tests-view"><i class="fa-solid fa-list-check" style="width: 20px; text-align: center;"></i> <span class="nav-text">Gestão de Provas</span></a>
+        <a class="nav-item" data-target="question-bank-view"><i class="fa-solid fa-database" style="width: 20px; text-align: center;"></i> <span class="nav-text">Banco de Questões</span></a>
         <a class="nav-item" data-target="create-test-view"><i class="fa-solid fa-file-circle-plus" style="width: 20px; text-align: center;"></i> <span class="nav-text">Criar Prova</span></a>
         <a href="#" class="nav-item evaluator-only" data-target="evaluate-view"><i class="fa-solid fa-check-double" style="width: 20px; text-align: center;"></i> <span class="nav-text">Correções</span></a>
         <a href="#" class="nav-item evaluator-only" data-target="student-performance-view"><i class="fa-solid fa-chart-line" style="width: 20px; text-align: center;"></i> <span class="nav-text">Desempenho</span></a>
@@ -303,11 +304,56 @@
         </div>
       </section>
 
+      <!-- Question Bank -->
+      <section id="question-bank-view" class="view">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h2>Banco de Questões</h2>
+          <div style="display: flex; gap: 16px;">
+            <button class="btn btn-secondary" onclick="openManageModules()"><i class="fa-solid fa-layer-group"></i> Gerenciar Módulos</button>
+            <button class="btn" onclick="openModal('question-bank-modal')"><i class="fa-solid fa-plus"></i> Nova Questão</button>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="question-bank-stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
+          <!-- Populated by JS -->
+        </div>
+        
+        <div class="glass-panel">
+          <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+            <div class="input-group" style="flex: 2; margin: 0;">
+              <input type="text" id="search-questions" class="input-control" placeholder="Buscar por texto ou módulo..." onkeyup="renderQuestionBank()">
+            </div>
+            <div class="input-group" style="flex: 1; margin: 0;">
+              <select id="filter-questions-module" class="input-control" onchange="renderQuestionBank()">
+                <option value="TODOS">Todos os módulos</option>
+                <!-- Preenchido via JS -->
+              </select>
+            </div>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Módulo</th>
+                <th>Questão</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="questions-tbody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- Create Test -->
       <section id="create-test-view" class="view">
         <h2>Criar Nova Prova</h2>
-        <p style="margin-bottom: 24px;">Faça o upload do arquivo (.docx ou .txt) ou cole o texto estruturado abaixo para gerar a prova.</p>
         
+        <div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 16px;">
+          <button class="tab-btn active" data-tab="manual-creation" style="background: none; border: none; color: var(--primary-light); padding: 8px 16px; cursor: pointer; border-bottom: 2px solid var(--primary-color); font-weight: 500; font-size: 16px;">Manual / Upload</button>
+          <button class="tab-btn" data-tab="auto-creation" style="background: none; border: none; color: var(--text-muted); padding: 8px 16px; cursor: pointer; font-size: 16px; font-weight: 500;">Geração Automática</button>
+        </div>
+
         <div class="glass-panel">
           <div class="input-group">
             <label for="test-title">Título da Prova</label>
@@ -332,19 +378,34 @@
             </div>
           </div>
           
-          <div class="input-group">
-            <label for="test-file">Upload de Arquivo (Opcional - .docx, .txt)</label>
-            <input type="file" id="test-file" class="input-control" accept=".txt,.docx" style="padding: 10px;">
+          <div id="manual-creation-tab" class="tab-content">
+            <p style="margin-bottom: 16px; color: var(--text-muted);">Faça o upload do arquivo (.docx ou .txt) ou cole o texto estruturado abaixo para gerar a prova.</p>
+            <div class="input-group">
+              <label for="test-file">Upload de Arquivo (Opcional - .docx, .txt)</label>
+              <input type="file" id="test-file" class="input-control" accept=".txt,.docx" style="padding: 10px;">
+            </div>
+            
+            <div class="input-group">
+              <label for="test-parser">Conteúdo da Prova (Siga o padrão numérico com alternativas e "Resposta: X")</label>
+              <textarea id="test-parser" class="parser-area" placeholder="1. O que são Fundos Imobiliários?&#10;A) Empresas...&#10;B) Fundos que...&#10;&#10;Resposta: B"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 16px; margin-top: 16px;">
+              <button class="btn" id="parse-test-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Processar Texto</button>
+              <button class="btn btn-secondary" id="clear-test-btn"><i class="fa-solid fa-eraser"></i> Limpar</button>
+            </div>
           </div>
-          
-          <div class="input-group">
-            <label for="test-parser">Conteúdo da Prova (Siga o padrão numérico com alternativas e "Resposta: X")</label>
-            <textarea id="test-parser" class="parser-area" placeholder="1. O que são Fundos Imobiliários?&#10;A) Empresas...&#10;B) Fundos que...&#10;&#10;Resposta: B&#10;&#10;2. (Dissertativa) Explique o processo..."></textarea>
-          </div>
-          
-          <div style="display: flex; gap: 16px; margin-top: 16px;">
-            <button class="btn" id="parse-test-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Processar Texto</button>
-            <button class="btn btn-secondary" id="clear-test-btn"><i class="fa-solid fa-eraser"></i> Limpar</button>
+
+          <div id="auto-creation-tab" class="tab-content" style="display: none;">
+            <p style="margin-bottom: 16px; color: var(--text-muted);">Selecione os módulos e a quantidade de questões desejadas para gerar a prova automaticamente a partir do banco.</p>
+            <div id="auto-modules-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+              <!-- Linhas de módulo adicionadas dinamicamente via JS -->
+            </div>
+            <button class="btn btn-secondary" id="add-module-row-btn" style="margin-bottom: 16px;"><i class="fa-solid fa-plus"></i> Adicionar Módulo</button>
+            <div style="display: flex; gap: 16px;">
+              <button class="btn" id="generate-auto-test-btn"><i class="fa-solid fa-robot"></i> Gerar Prova</button>
+              <button class="btn btn-secondary" id="clear-auto-preview-btn"><i class="fa-solid fa-eraser"></i> Limpar Pré-visualização</button>
+            </div>
           </div>
           
           <div id="parsed-result" class="parsed-preview hidden">
@@ -602,6 +663,94 @@
         <button class="btn btn-secondary" id="confirm-modal-cancel" style="padding: 12px 24px; font-size: 16px;">Cancelar</button>
         <button class="btn btn-danger" id="confirm-modal-ok" style="padding: 12px 24px; font-size: 16px; background: var(--danger, #ff4d4f); border-color: var(--danger, #ff4d4f);">Sim, Excluir</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Question Bank Modal -->
+  <div class="modal-overlay" id="question-bank-modal">
+    <div class="glass-panel modal" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <h3>Adicionar ao Banco de Questões</h3>
+        <button class="modal-close" onclick="closeModal('question-bank-modal')">&times;</button>
+      </div>
+      <p style="margin-bottom: 16px; color: var(--text-muted);">Cole as questões no mesmo formato usado para criar provas. Todas serão associadas ao módulo escolhido.</p>
+      <form id="question-bank-form">
+        <div class="input-group">
+          <label for="bank-module">Módulo</label>
+          <select id="bank-module" class="input-control" required>
+            <option value="">Selecione um módulo</option>
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="bank-parser">Conteúdo da(s) Questão(ões)</label>
+          <textarea id="bank-parser" class="parser-area" placeholder="1. Pergunta?&#10;A) Alt A&#10;B) Alt B&#10;&#10;Resposta: A" required></textarea>
+        </div>
+        <button type="submit" class="btn" id="save-bank-btn">Processar e Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Manage Modules Modal -->
+  <div class="modal-overlay" id="module-modal">
+    <div class="glass-panel modal" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>Gerenciar Módulos</h3>
+        <button class="modal-close" onclick="closeModal('module-modal')">&times;</button>
+      </div>
+      
+      <form id="module-form" style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 24px;">
+        <div class="input-group" style="flex: 1; margin: 0;">
+          <label>Adicionar Novo Módulo</label>
+          <input type="text" id="new-module-name" class="input-control" required placeholder="Ex: Previdência">
+        </div>
+        <button type="submit" class="btn"><i class="fa-solid fa-plus"></i> Adicionar</button>
+      </form>
+
+      <h4 style="margin-bottom: 12px; color: var(--text-muted); font-size: 14px; text-transform: uppercase;">Módulos Existentes</h4>
+      <div id="manage-modules-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Question Modal -->
+  <div class="modal-overlay" id="edit-question-modal">
+    <div class="glass-panel modal" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>Editar Questão</h3>
+        <button class="modal-close" onclick="closeModal('edit-question-modal')">&times;</button>
+      </div>
+      <form id="edit-question-form">
+        <input type="hidden" id="edit-question-id">
+        <div class="input-group">
+          <label for="edit-question-module">Módulo</label>
+          <select id="edit-question-module" class="input-control" required>
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="edit-question-text">Texto da Pergunta</label>
+          <textarea id="edit-question-text" class="input-control" rows="3" required></textarea>
+        </div>
+        
+        <div id="edit-question-options-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="input-group">
+          <label for="edit-question-answer">Resposta Correta</label>
+          <select id="edit-question-answer" class="input-control" required>
+            <option value="A">Alternativa A</option>
+            <option value="B">Alternativa B</option>
+            <option value="C">Alternativa C</option>
+            <option value="D">Alternativa D</option>
+            <option value="E">Alternativa E</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn" style="width: 100%;">Salvar Alterações</button>
+      </form>
     </div>
   </div>
 

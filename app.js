@@ -97,6 +97,7 @@ window.showView = async function(viewId) {
   if (viewId === 'student-dashboard-view') renderStudentDashboard();
   if (viewId === 'student-history-view') renderStudentHistory();
   if (viewId === 'evaluate-view') renderEvaluateView();
+  if (viewId === 'question-bank-view') renderQuestionBank();
   
   if (viewId === 'create-test-view') {
     const teamSelect = document.getElementById('test-target-team');
@@ -179,7 +180,7 @@ function handleLoginSuccess(user) {
     document.body.classList.remove('no-copy');
     setupRealtime();
     const savedView = localStorage.getItem('be_education_active_view') || 'dashboard-view';
-    const validEvaluatorViews = ['dashboard-view', 'manage-users-view', 'manage-teams-view', 'manage-tests-view', 'create-test-view', 'evaluate-view', 'student-performance-view'];
+    const validEvaluatorViews = ['dashboard-view', 'manage-users-view', 'manage-teams-view', 'manage-tests-view', 'create-test-view', 'evaluate-view', 'student-performance-view', 'question-bank-view'];
     showView(validEvaluatorViews.includes(savedView) ? savedView : 'dashboard-view');
   } else {
     document.getElementById('evaluator-nav').style.display = 'none';
@@ -1694,3 +1695,411 @@ window.viewTestSubmissions = async function(testId) {
 window.backToEvaluateTests = function() {
   renderEvaluateView();
 };
+
+// --- Question Bank Logic ---
+window.renderQuestionBank = async function() {
+  const tbody = document.getElementById('questions-tbody');
+  if(!tbody) return;
+  const searchInput = document.getElementById('search-questions');
+  const search = searchInput ? searchInput.value.toLowerCase() : '';
+  const filterInput = document.getElementById('filter-questions-module');
+  const moduleFilter = filterInput ? filterInput.value : 'TODOS';
+
+  const { data: questions, error } = await supabase.from('question_bank').select('*, modules(name)').order('created_at', { ascending: false });
+  if (error) {
+    console.error("Fetch question_bank error:", error);
+    showToast("Erro DB: " + error.message, "error");
+    // não dá return para tentar carregar os módulos mesmo assim
+  }
+
+  const { data: modulesData, error: modulesError } = await supabase.from('modules').select('*').order('name');
+  if (modulesError) {
+    console.error("Fetch modules error:", modulesError);
+    showToast("Erro DB Módulos: " + modulesError.message, "error");
+  }
+  const modules = modulesData || [];
+
+  // Filter Logic
+  const filtered = (questions || []).filter(q => {
+    const modName = q.modules ? q.modules.name : 'Sem Módulo';
+    const matchSearch = q.question_text.toLowerCase().includes(search) || modName.toLowerCase().includes(search);
+    const matchModule = moduleFilter === 'TODOS' || q.module_id === moduleFilter;
+    return matchSearch && matchModule;
+  });
+
+  // Render Stats
+  const statsContainer = document.getElementById('question-bank-stats');
+  if (statsContainer) {
+    const total = filtered.length;
+    let label = 'Total de Questões';
+    if (moduleFilter !== 'TODOS' || search !== '') {
+      label = 'Questões Encontradas';
+    }
+
+    statsContainer.style.gridTemplateColumns = '1fr'; // single full-width card
+    statsContainer.innerHTML = `
+      <div class="glass-panel stat-card" style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+        <div class="stat-info">
+          <h4 style="font-size: 16px;">${label}</h4>
+          <div class="value" style="font-size: 42px; margin-top: 8px; color: var(--primary-light);">${total}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Update datalist and filter dropdown
+  const datalist = document.getElementById('bank-module');
+  if (datalist) {
+    datalist.innerHTML = '<option value="">Selecione um módulo</option>' + modules.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  }
+  
+  if (filterInput) {
+    const currentVal = filterInput.value;
+    filterInput.innerHTML = '<option value="TODOS">Todos os módulos</option>' + modules.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+    filterInput.value = currentVal;
+  }
+
+  tbody.innerHTML = filtered.map(q => `
+    <tr>
+      <td><span class="badge badge-blue">${q.modules ? q.modules.name : 'Sem Módulo'}</span></td>
+      <td style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${q.question_text.replace(/"/g, '&quot;')}">${q.question_text}</td>
+      <td>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-icon btn-secondary" onclick="editQuestionBank('${q.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-icon btn-danger" onclick="deleteQuestionBank('${q.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+};
+
+document.getElementById('module-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('new-module-name').value;
+  if (!name || !name.trim()) return;
+  
+  const btn = e.target.querySelector('button[type="submit"]');
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  btn.disabled = true;
+
+  try {
+    const res = await supabase.from('modules').insert({ name: name.trim() }).select();
+    const { error, data } = res;
+    
+    btn.innerHTML = original;
+    btn.disabled = false;
+    
+    if (error) {
+      showToast('Erro Supabase Insert: ' + error.message, 'error');
+    } else {
+      showToast('Módulo criado com sucesso!', 'success');
+      document.getElementById('new-module-name').value = '';
+      openManageModules(); // refresh the list
+      renderQuestionBank();
+      if (document.getElementById('auto-creation-tab')?.style.display === 'block') {
+        renderAutoModules();
+      }
+    }
+  } catch(err) {
+    btn.innerHTML = original;
+    btn.disabled = false;
+    showToast('Exceção ao inserir: ' + err.message, 'error');
+  }
+});
+
+window.openManageModules = async function() {
+  const container = document.getElementById('manage-modules-list');
+  container.innerHTML = '<div style="text-align: center; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Carregando...</div>';
+  openModal('module-modal');
+
+  const { data: modulesData, error } = await supabase.from('modules').select('*').order('name');
+  
+  if (error) {
+    container.innerHTML = '<div style="color: var(--danger);">Erro ao carregar módulos</div>';
+    return;
+  }
+
+  if (!modulesData || modulesData.length === 0) {
+    container.innerHTML = '<div style="color: var(--text-muted);">Nenhum módulo cadastrado.</div>';
+    return;
+  }
+
+  container.innerHTML = modulesData.map(m => `
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+      <span style="font-weight: 500;">${m.name}</span>
+      <button class="btn btn-icon btn-danger" style="padding: 6px; min-width: unset; width: 32px; height: 32px;" onclick="deleteModule('${m.id}')" title="Excluir Módulo"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  `).join('');
+};
+
+window.deleteModule = function(id) {
+  showConfirm('Tem certeza? Se este módulo possuir questões vinculadas, a exclusão será bloqueada pelo banco de dados.', async () => {
+    const { error } = await supabase.from('modules').delete().eq('id', id);
+    if (error) {
+      if (error.message.includes('foreign key constraint') || error.code === '23503') {
+        showToast('Não é possível excluir. Existem questões vinculadas a este módulo.', 'error');
+      } else {
+        showToast('Erro ao excluir: ' + error.message, 'error');
+      }
+    } else {
+      showToast('Módulo excluído com sucesso!', 'success');
+      openManageModules(); // refresh the list
+      renderQuestionBank();
+      if (document.getElementById('auto-creation-tab')?.style.display === 'block') {
+        renderAutoModules();
+      }
+    }
+  });
+};
+
+window.editQuestionBank = async function(id) {
+  const { data, error } = await supabase.from('question_bank').select('*').eq('id', id).single();
+  if (error || !data) return showToast('Erro ao carregar questão', 'error');
+
+  const { data: modulesData } = await supabase.from('modules').select('*').order('name');
+  const modSelect = document.getElementById('edit-question-module');
+  modSelect.innerHTML = (modulesData || []).map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  
+  document.getElementById('edit-question-id').value = data.id;
+  modSelect.value = data.module_id;
+  document.getElementById('edit-question-text').value = data.question_text;
+  document.getElementById('edit-question-answer').value = data.correct_answer;
+
+  const optContainer = document.getElementById('edit-question-options-container');
+  optContainer.innerHTML = '';
+  
+  const options = data.options || [];
+  const letters = ['A', 'B', 'C', 'D', 'E'];
+  
+  for(let i=0; i<5; i++) {
+    const val = options[i] || '';
+    optContainer.innerHTML += `
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span style="font-weight: bold; width: 20px;">${letters[i]})</span>
+        <input type="text" class="input-control edit-opt" style="flex: 1;" placeholder="Alternativa ${letters[i]}" value="${val.replace(/"/g, '&quot;')}">
+      </div>
+    `;
+  }
+  
+  openModal('edit-question-modal');
+};
+
+document.getElementById('edit-question-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('edit-question-id').value;
+  const moduleId = document.getElementById('edit-question-module').value;
+  const text = document.getElementById('edit-question-text').value;
+  const answer = document.getElementById('edit-question-answer').value;
+  
+  const optInputs = document.querySelectorAll('.edit-opt');
+  const options = Array.from(optInputs).map(inp => inp.value.trim()).filter(v => v !== '');
+  
+  if (options.length < 2) return showToast('Preencha pelo menos duas alternativas', 'warning');
+
+  const btn = e.target.querySelector('button[type="submit"]');
+  const original = btn.innerText;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+  btn.disabled = true;
+
+  const { error } = await supabase.from('question_bank').update({
+    module_id: moduleId,
+    question_text: text,
+    options: options,
+    correct_answer: answer
+  }).eq('id', id);
+
+  btn.innerText = original;
+  btn.disabled = false;
+
+  if (error) {
+    showToast('Erro ao atualizar questão', 'error');
+  } else {
+    showToast('Questão atualizada com sucesso', 'success');
+    closeModal('edit-question-modal');
+    renderQuestionBank();
+  }
+});
+
+window.deleteQuestionBank = function(id) {
+  showConfirm('Deseja excluir esta questão do banco?', async () => {
+    await supabase.from('question_bank').delete().eq('id', id);
+    showToast('Questão excluída.', 'success');
+    renderQuestionBank();
+  });
+};
+
+document.getElementById('question-bank-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const moduleId = document.getElementById('bank-module').value;
+  const text = document.getElementById('bank-parser').value;
+  
+  if (!moduleId) return showToast('Selecione um módulo.', 'error');
+  if (!text.trim()) return showToast('Cole as questões primeiro.', 'error');
+  
+  const lines = text.split('\n').filter(l => l.trim() !== '');
+  const questions = [];
+  let currentQ = null;
+
+  lines.forEach(line => {
+    const isQuestionMatch = line.match(/^(\d+[\.\)]\s*|Pergunta \d+:\s*)/i);
+    if (isQuestionMatch) {
+      if (currentQ) questions.push(currentQ);
+      currentQ = {
+        module_id: moduleId,
+        question_text: line.substring(isQuestionMatch[0].length).trim(),
+        type: 'MULTIPLE_CHOICE',
+        options: [],
+        correct_answer: ''
+      };
+    } 
+    else if (currentQ && line.match(/^(Resposta|Answer):\s*([a-e])/i)) {
+      const match = line.match(/^(Resposta|Answer):\s*([a-e])/i);
+      currentQ.correct_answer = match[2].toUpperCase();
+    }
+    else if (currentQ && line.match(/^([a-e][\)\.]\s*|Resposta \d+\.[a-e]:\s*)/i)) {
+      let optText = line.replace(/^([a-e][\)\.]\s*|Resposta \d+\.[a-e]:\s*)/i, '').trim();
+      currentQ.options.push(optText);
+    }
+  });
+  if (currentQ) questions.push(currentQ);
+
+  const validQs = questions.filter(q => q.options.length > 0 && q.correct_answer !== '');
+  if (validQs.length === 0) return showToast('Nenhuma questão válida encontrada. Lembre-se do formato correto.', 'error');
+
+  const btn = document.getElementById('save-bank-btn');
+  const original = btn.innerText;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
+  btn.disabled = true;
+
+  const { error } = await supabase.from('question_bank').insert(validQs);
+  
+  btn.innerText = original;
+  btn.disabled = false;
+  
+  if (error) {
+    console.error(error);
+    showToast('Erro ao salvar no banco de questões.', 'error');
+  } else {
+    showToast(`${validQs.length} questão(ões) salva(s) com sucesso!`, 'success');
+    closeModal('question-bank-modal');
+    document.getElementById('bank-parser').value = '';
+    renderQuestionBank();
+  }
+});
+
+// --- Tab Logic for Create Test ---
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const tabId = e.target.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active');
+      b.style.borderBottom = 'none';
+      b.style.color = 'var(--text-muted)';
+    });
+    e.target.classList.add('active');
+    e.target.style.borderBottom = '2px solid var(--primary-color)';
+    e.target.style.color = 'var(--primary-light)';
+
+    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    document.getElementById(`${tabId}-tab`).style.display = 'block';
+    
+    if (tabId === 'auto-creation') {
+      renderAutoModules();
+    }
+  });
+});
+
+async function renderAutoModules() {
+  const container = document.getElementById('auto-modules-container');
+  if (container.children.length > 0) container.innerHTML = '';
+  
+  const { data: modulesData } = await supabase.from('modules').select('*').order('name');
+  window.availableModules = modulesData || [];
+  
+  addAutoModuleRow();
+}
+
+window.addAutoModuleRow = function() {
+  const container = document.getElementById('auto-modules-container');
+  const rowId = 'mod-row-' + Date.now();
+  
+  const options = (window.availableModules || []).map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  
+  const rowHTML = `
+    <div class="input-group" id="${rowId}" style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 0;">
+      <div style="flex: 2;">
+        <label>Módulo</label>
+        <select class="input-control auto-module-select">
+          ${options}
+        </select>
+      </div>
+      <div style="flex: 1;">
+        <label>Qtd. Questões</label>
+        <input type="number" class="input-control auto-module-qtd" min="1" value="1">
+      </div>
+      <div>
+        <button class="btn btn-icon btn-danger" onclick="document.getElementById('${rowId}').remove()"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+  `;
+  container.insertAdjacentHTML('beforeend', rowHTML);
+}
+document.getElementById('add-module-row-btn')?.addEventListener('click', addAutoModuleRow);
+
+document.getElementById('generate-auto-test-btn')?.addEventListener('click', async () => {
+  const rows = document.querySelectorAll('.auto-module-select');
+  const qtds = document.querySelectorAll('.auto-module-qtd');
+  
+  if (rows.length === 0) return showToast('Adicione pelo menos um módulo.', 'error');
+  
+  const request = [];
+  for(let i=0; i<rows.length; i++) {
+    request.push({ module: rows[i].value, limit: parseInt(qtds[i].value) });
+  }
+  
+  const btn = document.getElementById('generate-auto-test-btn');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Gerando...';
+  btn.disabled = true;
+  
+  let allQuestions = [];
+  
+  for(const req of request) {
+    const { data: qBank } = await supabase.from('question_bank').select('*, modules(name)').eq('module_id', req.module);
+    if (qBank && qBank.length > 0) {
+      // Shuffle
+      const shuffled = qBank.sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, req.limit);
+      
+      const mapped = selected.map(q => {
+        const letterIdx = q.correct_answer.charCodeAt(0) - 65;
+        return {
+          text: `(${q.modules ? q.modules.name : '?'}) ${q.question_text}`,
+          type: 'MULTIPLE_CHOICE',
+          options: q.options,
+          correctOptionIdx: letterIdx >= 0 && letterIdx < q.options.length ? letterIdx : 0
+        };
+      });
+      allQuestions = allQuestions.concat(mapped);
+    }
+  }
+  
+  btn.innerHTML = originalText;
+  btn.disabled = false;
+  
+  if (allQuestions.length === 0) {
+    return showToast('Nenhuma questão encontrada para os módulos selecionados.', 'error');
+  }
+  
+  currentParsedData = allQuestions;
+  renderParsedPreview();
+  showToast('Prova gerada com sucesso! Revise abaixo.', 'success');
+  document.getElementById('parsed-result').classList.remove('hidden');
+});
+
+document.getElementById('clear-auto-preview-btn')?.addEventListener('click', () => {
+  currentParsedData = [];
+  document.getElementById('parsed-result').classList.add('hidden');
+  document.getElementById('preview-container').innerHTML = '';
+});
