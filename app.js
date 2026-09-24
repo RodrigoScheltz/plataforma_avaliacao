@@ -1698,18 +1698,10 @@ window.backToEvaluateTests = function() {
 
 // --- Question Bank Logic ---
 window.renderQuestionBank = async function() {
-  const tbody = document.getElementById('questions-tbody');
-  if(!tbody) return;
-  const searchInput = document.getElementById('search-questions');
-  const search = searchInput ? searchInput.value.toLowerCase() : '';
-  const filterInput = document.getElementById('filter-questions-module');
-  const moduleFilter = filterInput ? filterInput.value : 'TODOS';
-
   const { data: questions, error } = await supabase.from('question_bank').select('*, modules(name)').order('created_at', { ascending: false });
   if (error) {
     console.error("Fetch question_bank error:", error);
     showToast("Erro DB: " + error.message, "error");
-    // não dá return para tentar carregar os módulos mesmo assim
   }
 
   const { data: modulesData, error: modulesError } = await supabase.from('modules').select('*').order('name');
@@ -1717,52 +1709,133 @@ window.renderQuestionBank = async function() {
     console.error("Fetch modules error:", modulesError);
     showToast("Erro DB Módulos: " + modulesError.message, "error");
   }
-  const modules = modulesData || [];
+  
+  window.qbQuestions = questions || [];
+  window.qbModules = modulesData || [];
 
-  // Filter Logic
-  const filtered = (questions || []).filter(q => {
-    const modName = q.modules ? q.modules.name : 'Sem Módulo';
-    const matchSearch = q.question_text.toLowerCase().includes(search) || modName.toLowerCase().includes(search);
-    const matchModule = moduleFilter === 'TODOS' || q.module_id === moduleFilter;
-    return matchSearch && matchModule;
+  // Update new question dropdown
+  const datalist = document.getElementById('bank-module');
+  if (datalist) {
+    datalist.innerHTML = '<option value="">Selecione um módulo</option>' + window.qbModules.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  }
+
+  // Count questions per module
+  const counts = { 'sem_modulo': { name: 'Sem Módulo', count: 0 } };
+  window.qbModules.forEach(m => {
+    counts[m.id] = { name: m.name, count: 0 };
   });
 
-  // Render Stats
-  const statsContainer = document.getElementById('question-bank-stats');
-  if (statsContainer) {
-    const total = filtered.length;
-    let label = 'Total de Questões';
-    if (moduleFilter !== 'TODOS' || search !== '') {
-      label = 'Questões Encontradas';
+  window.qbQuestions.forEach(q => {
+    if (q.module_id && counts[q.module_id]) {
+      counts[q.module_id].count++;
+    } else {
+      counts['sem_modulo'].count++;
     }
+  });
 
-    statsContainer.style.gridTemplateColumns = '1fr'; // single full-width card
-    statsContainer.innerHTML = `
-      <div class="glass-panel stat-card" style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+  // Render Module Grid
+  const grid = document.getElementById('qb-modules-grid');
+  if (grid) {
+    let gridHTML = '';
+    
+    // Total Geral Card
+    gridHTML += `
+      <div class="glass-panel stat-card" style="cursor: pointer; background: rgba(56, 189, 248, 0.1); border-color: var(--primary-color);" onclick="openModuleQuestions('TODOS', 'Total Geral')">
+        <div class="stat-icon" style="color: var(--primary-color);"><i class="fa-solid fa-layer-group"></i></div>
         <div class="stat-info">
-          <h4 style="font-size: 16px;">${label}</h4>
-          <div class="value" style="font-size: 42px; margin-top: 8px; color: var(--primary-light);">${total}</div>
+          <h4>Total Geral</h4>
+          <div class="value" style="font-size: 24px;">${window.qbQuestions.length} questões</div>
         </div>
       </div>
     `;
+
+    // Individual Modules
+    window.qbModules.forEach(m => {
+      gridHTML += `
+        <div class="glass-panel stat-card" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'" onclick="openModuleQuestions('${m.id}', '${m.name.replace(/'/g, "\\'")}')">
+          <div class="stat-icon"><i class="fa-solid fa-folder"></i></div>
+          <div class="stat-info">
+            <h4>${m.name}</h4>
+            <div class="value" style="font-size: 24px;">${counts[m.id].count} questões</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Sem Módulo (se tiver)
+    if (counts['sem_modulo'].count > 0) {
+      gridHTML += `
+        <div class="glass-panel stat-card" style="cursor: pointer;" onclick="openModuleQuestions('sem_modulo', 'Sem Módulo')">
+          <div class="stat-icon" style="color: var(--text-muted);"><i class="fa-solid fa-folder-open"></i></div>
+          <div class="stat-info">
+            <h4 style="color: var(--text-muted);">Sem Módulo</h4>
+            <div class="value" style="font-size: 24px;">${counts['sem_modulo'].count} questões</div>
+          </div>
+        </div>
+      `;
+    }
+
+    grid.innerHTML = gridHTML;
   }
 
-  // Update datalist and filter dropdown
+  // If already in a specific module view, update that view too
+  if (window.currentModuleFilter) {
+    renderModuleQuestions();
+  }
+};
+
+window.openModuleQuestions = function(moduleId, moduleName) {
+  window.currentModuleFilter = moduleId;
+  
+  document.getElementById('qb-modules-grid').style.display = 'none';
+  document.getElementById('qb-questions-list').style.display = 'block';
+  document.getElementById('qb-module-title').innerText = moduleName === 'Total Geral' ? 'Todas as Questões' : `Módulo: ${moduleName}`;
+  document.getElementById('search-questions').value = '';
+  
+  // Set default module for new questions
   const datalist = document.getElementById('bank-module');
-  if (datalist) {
-    datalist.innerHTML = '<option value="">Selecione um módulo</option>' + modules.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  if (datalist && moduleId !== 'TODOS' && moduleId !== 'sem_modulo') {
+    datalist.value = moduleId;
   }
   
-  if (filterInput) {
-    const currentVal = filterInput.value;
-    filterInput.innerHTML = '<option value="TODOS">Todos os módulos</option>' + modules.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-    filterInput.value = currentVal;
+  renderModuleQuestions();
+};
+
+window.closeModuleQuestions = function() {
+  window.currentModuleFilter = null;
+  document.getElementById('qb-modules-grid').style.display = 'grid';
+  document.getElementById('qb-questions-list').style.display = 'none';
+};
+
+window.renderModuleQuestions = function() {
+  const tbody = document.getElementById('questions-tbody');
+  if(!tbody) return;
+  
+  const searchInput = document.getElementById('search-questions');
+  const search = searchInput ? searchInput.value.toLowerCase() : '';
+  const moduleId = window.currentModuleFilter;
+
+  const filtered = (window.qbQuestions || []).filter(q => {
+    // Filter by module
+    let matchModule = false;
+    if (moduleId === 'TODOS') matchModule = true;
+    else if (moduleId === 'sem_modulo') matchModule = !q.module_id;
+    else matchModule = q.module_id === moduleId;
+
+    // Filter by search
+    const matchSearch = q.question_text.toLowerCase().includes(search);
+    
+    return matchModule && matchSearch;
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; padding: 24px; color: var(--text-muted);">Nenhuma questão encontrada neste módulo.</td></tr>`;
+    return;
   }
 
   tbody.innerHTML = filtered.map(q => `
     <tr>
-      <td><span class="badge badge-blue">${q.modules ? q.modules.name : 'Sem Módulo'}</span></td>
-      <td style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${q.question_text.replace(/"/g, '&quot;')}">${q.question_text}</td>
+      <td style="max-width: 500px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${q.question_text.replace(/"/g, '&quot;')}">${q.question_text}</td>
       <td>
         <div style="display: flex; gap: 8px;">
           <button class="btn btn-icon btn-secondary" onclick="editQuestionBank('${q.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
@@ -2027,19 +2100,19 @@ window.addAutoModuleRow = function() {
   const options = (window.availableModules || []).map(m => `<option value="${m.id}">${m.name}</option>`).join('');
   
   const rowHTML = `
-    <div class="input-group" id="${rowId}" style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 0;">
-      <div style="flex: 2;">
+    <div id="${rowId}" style="display: flex; flex-direction: row; gap: 16px; align-items: flex-end; margin-bottom: 12px; max-width: 600px;">
+      <div class="input-group" style="flex: 2; margin-bottom: 0;">
         <label>Módulo</label>
         <select class="input-control auto-module-select">
           ${options}
         </select>
       </div>
-      <div style="flex: 1;">
+      <div class="input-group" style="flex: 1; margin-bottom: 0;">
         <label>Qtd. Questões</label>
         <input type="number" class="input-control auto-module-qtd" min="1" value="1">
       </div>
-      <div>
-        <button class="btn btn-icon btn-danger" onclick="document.getElementById('${rowId}').remove()"><i class="fa-solid fa-trash"></i></button>
+      <div style="margin-bottom: 0;">
+        <button class="btn btn-icon btn-danger" style="height: 42px;" onclick="document.getElementById('${rowId}').remove()"><i class="fa-solid fa-trash"></i></button>
       </div>
     </div>
   `;
