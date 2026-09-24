@@ -264,6 +264,23 @@ window.closeModal = function(id) {
   document.getElementById(id).classList.remove('active');
 }
 
+// Fechar modal ao clicar fora (no background)
+window.addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal') && e.target.classList.contains('active')) {
+    e.target.classList.remove('active');
+  }
+});
+
+// Fechar modal ao apertar a tecla Esc
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const activeModals = document.querySelectorAll('.modal.active');
+    activeModals.forEach(modal => {
+      modal.classList.remove('active');
+    });
+  }
+});
+
 document.getElementById('new-user-profile').addEventListener('change', (e) => {
   const levelSelect = document.getElementById('new-user-level');
   if (e.target.value === 'SDR') {
