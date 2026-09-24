@@ -838,9 +838,15 @@ function renderParsedPreview() {
       optsHtml = '<p style="color: var(--warning); font-size: 14px; margin-top: 8px;"><i class="fa-solid fa-pen"></i> Campo dissertativo</p>';
     }
 
+    let moduleBadge = '';
+    if (q.moduleName) {
+      moduleBadge = `<span class="badge badge-blue" style="margin-bottom: 8px; display: inline-block;">${q.moduleName}</span><br>`;
+    }
+
     container.innerHTML += `
       <div class="preview-question">
-        <h4>${idx + 1}. ${q.text}</h4>
+        ${moduleBadge}
+        <h4 style="display: inline;">${idx + 1}. ${q.text}</h4>
         ${optsHtml}
       </div>
     `;
@@ -2148,7 +2154,8 @@ document.getElementById('generate-auto-test-btn')?.addEventListener('click', asy
       const mapped = selected.map(q => {
         const letterIdx = q.correct_answer.charCodeAt(0) - 65;
         return {
-          text: `(${q.modules ? q.modules.name : '?'}) ${q.question_text}`,
+          text: q.question_text,
+          moduleName: q.modules ? q.modules.name : '?',
           type: 'MULTIPLE_CHOICE',
           options: q.options,
           correctOptionIdx: letterIdx >= 0 && letterIdx < q.options.length ? letterIdx : 0
