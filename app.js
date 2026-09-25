@@ -266,7 +266,7 @@ window.closeModal = function(id) {
 
 // Fechar modal ao clicar fora (no background)
 window.addEventListener('click', (e) => {
-  if (e.target.classList.contains('modal') && e.target.classList.contains('active')) {
+  if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('active')) {
     e.target.classList.remove('active');
   }
 });
@@ -274,7 +274,7 @@ window.addEventListener('click', (e) => {
 // Fechar modal ao apertar a tecla Esc
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    const activeModals = document.querySelectorAll('.modal.active');
+    const activeModals = document.querySelectorAll('.modal-overlay.active');
     activeModals.forEach(modal => {
       modal.classList.remove('active');
     });
