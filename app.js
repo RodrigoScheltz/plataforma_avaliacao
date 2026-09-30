@@ -168,14 +168,14 @@ function setupRealtime() {
 
 async function handleLoginSuccess(user) {
   try {
-    // Verificar se o usuário precisa alterar a senha
-    const { data: userDetails, error } = await supabase.from('users').select('must_change_password').eq('id', user.id).single();
+    // Verificar se o usuário precisa alterar a senha via RPC para evitar bloqueios de permissão
+    const { data: mustChange, error } = await supabase.rpc('check_must_change_password', { p_user_id: user.id });
     
     if (error) {
       console.error("Erro ao verificar status da senha:", error);
     }
     
-    if (userDetails && userDetails.must_change_password === true) {
+    if (mustChange === true) {
       document.getElementById('force-password-modal').classList.add('active');
       
       const form = document.getElementById('force-password-form');
