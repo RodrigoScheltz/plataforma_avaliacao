@@ -755,6 +755,27 @@
     </div>
   </div>
 
+  <!-- Force Password Change Modal -->
+  <div class="modal-overlay" id="force-password-modal" style="z-index: 10001; background: rgba(0,0,0,0.9);">
+    <div class="glass-panel modal">
+      <div class="modal-header">
+        <h3>Redefinir Senha Obrigatória</h3>
+      </div>
+      <p style="margin-bottom: 16px; color: var(--text-muted);">Sua senha foi redefinida pelo gestor. Por favor, cadastre uma nova senha para continuar.</p>
+      <form id="force-password-form">
+        <div class="input-group">
+          <label>Nova Senha</label>
+          <input type="password" id="new-required-password" class="input-control" required minlength="6">
+        </div>
+        <div class="input-group">
+          <label>Confirmar Nova Senha</label>
+          <input type="password" id="confirm-required-password" class="input-control" required minlength="6">
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">Salvar e Continuar</button>
+      </form>
+    </div>
+  </div>
+
   <div id="toast-container"></div>
 
   <!-- Scripts -->

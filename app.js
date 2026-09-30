@@ -164,7 +164,55 @@ function setupRealtime() {
     .subscribe();
 }
 
-function handleLoginSuccess(user) {
+async function handleLoginSuccess(user) {
+  // Verificar se o usuário precisa alterar a senha
+  const { data: userDetails } = await supabase.from('users').select('must_change_password').eq('id', user.id).single();
+  
+  if (userDetails && userDetails.must_change_password) {
+    document.getElementById('force-password-modal').classList.add('active');
+    
+    const form = document.getElementById('force-password-form');
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const p1 = document.getElementById('new-required-password').value;
+      const p2 = document.getElementById('confirm-required-password').value;
+      
+      if (p1 !== p2) {
+        showToast('As senhas não coincidem.', 'error');
+        return;
+      }
+      
+      const btn = form.querySelector('button[type="submit"]');
+      const originalText = btn.innerText;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+      btn.disabled = true;
+
+      const { error } = await supabase.from('users').update({
+        password: p1,
+        must_change_password: false
+      }).eq('id', user.id);
+
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+
+      if (error) {
+        showToast('Erro ao salvar nova senha.', 'error');
+        return;
+      }
+
+      showToast('Senha atualizada com sucesso!', 'success');
+      document.getElementById('force-password-modal').classList.remove('active');
+      document.getElementById('new-required-password').value = '';
+      document.getElementById('confirm-required-password').value = '';
+      proceedWithLogin(user);
+    };
+    return;
+  }
+
+  proceedWithLogin(user);
+}
+
+function proceedWithLogin(user) {
   State.currentUser = user;
   loginScreen.classList.add('hidden');
   appScreen.classList.remove('hidden');
@@ -436,6 +484,9 @@ window.renderUsers = async function() {
         <td>${teamName}</td>
         <td style="display: flex; gap: 8px;">
           <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="editUser('${u.id}')">Editar</button>
+          <button class="btn" style="padding: 4px 8px; font-size: 12px; background: var(--warning, #f5a623); border: none; color: #fff;" onclick="generateNewPassword('${u.id}')" title="Gerar Nova Senha">
+            <i class="fa-solid fa-key"></i>
+          </button>
           <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="deleteUser('${u.id}')" title="Excluir Usuário">
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -467,6 +518,25 @@ window.deleteUser = function(userId) {
     await supabase.from('submissions').delete().eq('student_id', userId);
     await supabase.from('users').delete().eq('id', userId);
     showToast('Usuário excluído com sucesso!', 'success');
+    renderUsers();
+  });
+};
+
+window.generateNewPassword = function(userId) {
+  showConfirm('Gerar nova senha temporária? O usuário será forçado a criar uma nova senha no próximo login.', async () => {
+    const tempPassword = Math.random().toString(36).slice(-8);
+    
+    const { error } = await supabase.from('users').update({ 
+      password: tempPassword, 
+      must_change_password: true 
+    }).eq('id', userId);
+
+    if (error) {
+      showToast('Erro ao redefinir senha.', 'error');
+      return;
+    }
+    
+    alert(`A nova senha temporária é: ${tempPassword}\n\nCopie esta senha e envie ao usuário. Ele deverá alterá-la no primeiro acesso.`);
     renderUsers();
   });
 };
