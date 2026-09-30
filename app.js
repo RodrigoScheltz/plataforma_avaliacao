@@ -19,7 +19,7 @@ window.showToast = function(message, type = 'success') {
 };
 
 // Global Confirm Modal
-window.showConfirm = function(message, onConfirm) {
+window.showConfirm = function(message, onConfirm, confirmText = 'Sim, Excluir') {
   document.getElementById('confirm-modal-message').innerText = message;
   const modal = document.getElementById('confirm-modal');
   modal.classList.add('active');
@@ -32,6 +32,8 @@ window.showConfirm = function(message, onConfirm) {
   const newCancelBtn = cancelBtn.cloneNode(true);
   okBtn.parentNode.replaceChild(newOkBtn, okBtn);
   cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+  
+  newOkBtn.innerText = confirmText;
   
   newOkBtn.addEventListener('click', () => {
     modal.classList.remove('active');
@@ -165,48 +167,56 @@ function setupRealtime() {
 }
 
 async function handleLoginSuccess(user) {
-  // Verificar se o usuário precisa alterar a senha
-  const { data: userDetails } = await supabase.from('users').select('must_change_password').eq('id', user.id).single();
-  
-  if (userDetails && userDetails.must_change_password) {
-    document.getElementById('force-password-modal').classList.add('active');
+  try {
+    // Verificar se o usuário precisa alterar a senha
+    const { data: userDetails, error } = await supabase.from('users').select('must_change_password').eq('id', user.id).single();
     
-    const form = document.getElementById('force-password-form');
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      const p1 = document.getElementById('new-required-password').value;
-      const p2 = document.getElementById('confirm-required-password').value;
+    if (error) {
+      console.error("Erro ao verificar status da senha:", error);
+    }
+    
+    if (userDetails && userDetails.must_change_password === true) {
+      document.getElementById('force-password-modal').classList.add('active');
       
-      if (p1 !== p2) {
-        showToast('As senhas não coincidem.', 'error');
-        return;
-      }
-      
-      const btn = form.querySelector('button[type="submit"]');
-      const originalText = btn.innerText;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
-      btn.disabled = true;
+      const form = document.getElementById('force-password-form');
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const p1 = document.getElementById('new-required-password').value;
+        const p2 = document.getElementById('confirm-required-password').value;
+        
+        if (p1 !== p2) {
+          showToast('As senhas não coincidem.', 'error');
+          return;
+        }
+        
+        const btn = form.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+        btn.disabled = true;
 
-      const { error } = await supabase.from('users').update({
-        password: p1,
-        must_change_password: false
-      }).eq('id', user.id);
+        const { error: updError } = await supabase.from('users').update({
+          password: p1,
+          must_change_password: false
+        }).eq('id', user.id);
 
-      btn.innerHTML = originalText;
-      btn.disabled = false;
+        btn.innerHTML = originalText;
+        btn.disabled = false;
 
-      if (error) {
-        showToast('Erro ao salvar nova senha.', 'error');
-        return;
-      }
+        if (updError) {
+          showToast('Erro ao salvar nova senha.', 'error');
+          return;
+        }
 
-      showToast('Senha atualizada com sucesso!', 'success');
-      document.getElementById('force-password-modal').classList.remove('active');
-      document.getElementById('new-required-password').value = '';
-      document.getElementById('confirm-required-password').value = '';
-      proceedWithLogin(user);
-    };
-    return;
+        showToast('Senha atualizada com sucesso!', 'success');
+        document.getElementById('force-password-modal').classList.remove('active');
+        document.getElementById('new-required-password').value = '';
+        document.getElementById('confirm-required-password').value = '';
+        proceedWithLogin(user);
+      };
+      return;
+    }
+  } catch (err) {
+    console.error("Erro em handleLoginSuccess:", err);
   }
 
   proceedWithLogin(user);
@@ -536,8 +546,20 @@ window.generateNewPassword = function(userId) {
       return;
     }
     
-    alert(`A nova senha temporária é: ${tempPassword}\n\nCopie esta senha e envie ao usuário. Ele deverá alterá-la no primeiro acesso.`);
+    showTempPasswordModal(tempPassword);
     renderUsers();
+  }, 'Sim, redefinir');
+};
+
+window.showTempPasswordModal = function(password) {
+  document.getElementById('temp-password-display').innerText = password;
+  document.getElementById('temp-password-modal').classList.add('active');
+};
+
+window.copyTempPassword = function() {
+  const pwd = document.getElementById('temp-password-display').innerText;
+  navigator.clipboard.writeText(pwd).then(() => {
+    showToast('Senha copiada!', 'success');
   });
 };
 

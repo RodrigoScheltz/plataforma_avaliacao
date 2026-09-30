@@ -776,6 +776,22 @@
     </div>
   </div>
 
+  <!-- Temp Password Modal -->
+  <div class="modal-overlay" id="temp-password-modal" style="z-index: 10002;">
+    <div class="glass-panel modal" style="max-width: 450px; text-align: center;">
+      <div class="modal-header">
+        <h3>Senha Temporária Gerada</h3>
+        <button class="modal-close" onclick="closeModal('temp-password-modal')">&times;</button>
+      </div>
+      <p style="margin-bottom: 16px; color: var(--text-muted);">Copie a senha abaixo e envie ao colaborador. Ele será forçado a alterá-la no primeiro acesso.</p>
+      <div style="display: flex; gap: 8px; justify-content: center; align-items: center; background: rgba(0,0,0,0.2); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+        <span id="temp-password-display" style="font-size: 24px; font-weight: bold; letter-spacing: 2px; color: var(--primary-light);"></span>
+        <button class="btn btn-secondary" onclick="copyTempPassword()" style="padding: 8px;" title="Copiar Senha"><i class="fa-solid fa-copy"></i></button>
+      </div>
+      <button class="btn" style="width: 100%;" onclick="closeModal('temp-password-modal')">Concluir</button>
+    </div>
+  </div>
+
   <div id="toast-container"></div>
 
   <!-- Scripts -->
