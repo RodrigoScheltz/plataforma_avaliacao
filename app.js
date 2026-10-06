@@ -264,12 +264,15 @@ setTimeout(async () => {
     if (userProfile) {
       localStorage.setItem('be_education_user', JSON.stringify(userProfile));
       handleLoginSuccess(userProfile);
-    } else {
-      localStorage.removeItem('be_education_user');
+      return;
     }
-  } else {
-    localStorage.removeItem('be_education_user');
   }
+
+  // Se não tem sessão (ou falhou ao carregar o perfil), limpa tudo e mostra a tela de login
+  localStorage.removeItem('be_education_user');
+  document.documentElement.classList.remove('has-session');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
 }, 0);
 
 document.getElementById('real-login-form').addEventListener('submit', async (e) => {
