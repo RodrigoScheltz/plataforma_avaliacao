@@ -194,10 +194,10 @@ async function handleLoginSuccess(user) {
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
         btn.disabled = true;
 
-        const { error: updError } = await supabase.from('users').update({
-          password: p1,
-          must_change_password: false
-        }).eq('id', user.id);
+        const { error: updError } = await supabase.rpc('update_user_password', {
+          p_user_id: user.id,
+          p_password: p1
+        });
 
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -250,26 +250,35 @@ function proceedWithLogin(user) {
   }
 }
 
-// Check for saved session (deferred to ensure all functions are defined)
-setTimeout(() => {
-  const savedSession = localStorage.getItem('be_education_user');
-  if (savedSession) {
-    let user = null;
-    try {
-      user = JSON.parse(savedSession);
-    } catch(e) {
+// Check for saved session via Supabase Auth
+setTimeout(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (session) {
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('id, name, email, role, profile, level, team_id')
+      .eq('id', session.user.id)
+      .single();
+      
+    if (userProfile) {
+      localStorage.setItem('be_education_user', JSON.stringify(userProfile));
+      handleLoginSuccess(userProfile);
+    } else {
       localStorage.removeItem('be_education_user');
     }
-    if (user) {
-      handleLoginSuccess(user);
-    }
+  } else {
+    localStorage.removeItem('be_education_user');
   }
 }, 0);
 
 document.getElementById('real-login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   
-  const email = document.getElementById('login-email').value;
+  let email = document.getElementById('login-email').value.trim();
+  if (!email.includes('@')) {
+    email = email + '@plataforma.local';
+  }
   const pass = document.getElementById('login-password').value;
   
   const btn = e.target.querySelector('button[type="submit"]');
@@ -277,30 +286,46 @@ document.getElementById('real-login-form').addEventListener('submit', async (e) 
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Entrando...';
   btn.disabled = true;
 
-  const { data: users, error } = await supabase.rpc('login_user', { p_email: email, p_password: pass }).select('id, name, email, role, profile, level, team_id');
+  // Usa o novo Auth nativo do Supabase
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: pass
+  });
+
+  if (authError || !authData.user) {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    showToast(authError ? authError.message : 'Login ou senha incorretos.', 'error');
+    console.error('Supabase Login Error:', authError);
+    return;
+  }
+
+  // Busca os dados complementares do perfil
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, name, email, role, profile, level, team_id')
+    .eq('id', authData.user.id)
+    .single();
 
   btn.innerHTML = originalText;
   btn.disabled = false;
-  
-  if (error) {
-    console.error('Supabase Login Error:', error);
-  }
 
-  if (error || !users || users.length === 0) {
-    showToast('Login ou senha incorretos.', 'error');
+  if (profileError || !userProfile) {
+    showToast(`Erro no perfil: ${profileError ? profileError.message : 'Não encontrado'}`, 'error');
+    console.error('Profile Error:', profileError);
     return;
   }
   
-  const user = users[0];
-  localStorage.setItem('be_education_user', JSON.stringify(user));
-  handleLoginSuccess(user);
+  localStorage.setItem('be_education_user', JSON.stringify(userProfile));
+  handleLoginSuccess(userProfile);
 });
 
-document.getElementById('logout-btn').addEventListener('click', () => {
+document.getElementById('logout-btn').addEventListener('click', async () => {
   State.currentUser = null;
   localStorage.removeItem('be_education_user');
   localStorage.removeItem('be_education_active_view');
   document.documentElement.classList.remove('has-session');
+  await supabase.auth.signOut();
   appScreen.classList.add('hidden');
   loginScreen.classList.remove('hidden');
 });
@@ -407,9 +432,22 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
 
   if (editingUserId) {
     const updateData = { name, email, role, profile, level, team_id };
-    if (password) updateData.password = password;
     
+    // Atualiza os dados comuns
     await supabase.from('users').update(updateData).eq('id', editingUserId);
+    
+    // Se digitou uma nova senha, atualiza pelo RPC (Auth Oficial)
+    if (password) {
+      const { error: updError } = await supabase.rpc('update_user_password', {
+        p_user_id: editingUserId,
+        p_password: password
+      });
+      if (updError) {
+        console.error('Erro ao atualizar senha:', updError);
+        showToast('Erro ao atualizar senha: ' + updError.message, 'error');
+      }
+    }
+    
     editingUserId = null;
   } else {
     // Verificar e-mail existente
@@ -421,9 +459,20 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
       return;
     }
     
-    await supabase.from('users').insert({
-      name, email, password, role, profile, level, team_id
+    const { error: createError } = await supabase.rpc('create_user_account', { 
+      p_name: name, 
+      p_email: email, 
+      p_password: password, 
+      p_role: role, 
+      p_profile: profile, 
+      p_level: level, 
+      p_team_id: team_id 
     });
+    
+    if (createError) {
+      showToast('Erro ao criar usuário', 'error');
+      console.error(createError);
+    }
   }
   
   btn.innerHTML = originalText;
