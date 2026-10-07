@@ -80,18 +80,21 @@ p {
 
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* backdrop-filter removido por performance: o fundo é um gradiente liso,
+     então o blur não tinha efeito visual, mas custava muita CPU/GPU a cada quadro. */
   border: 1px solid var(--glass-border);
   border-radius: 16px;
   padding: 24px;
   box-shadow: var(--glass-shadow);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.glass-panel:hover {
+/* Efeito de elevação apenas nos cards pequenos (evita repintar tabelas/gráficos grandes) */
+.glass-panel.stat-card {
+  transition: transform 0.2s ease;
+}
+
+.glass-panel.stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
 }
 
 .btn {
@@ -103,7 +106,7 @@ p {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.2s ease, transform 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -257,7 +260,7 @@ select.input-control option {
   display: flex;
   align-items: center;
   gap: 16px;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
   cursor: pointer;
   border-left: 3px solid transparent;
   white-space: nowrap;
@@ -329,7 +332,7 @@ select.input-control option {
 /* Views */
 .view {
   display: none;
-  animation: fadeIn 0.4s ease forwards;
+  animation: fadeIn 0.3s ease;
 }
 
 .view.active {
@@ -347,6 +350,11 @@ select.input-control option {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 24px;
   margin-bottom: 32px;
+}
+
+/* Impede que gráficos responsivos (Chart.js) forcem o grid a crescer/redimensionar em loop */
+.stats-grid > * {
+  min-width: 0;
 }
 
 .stat-card {
@@ -421,19 +429,23 @@ select.input-control option {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   opacity: 0;
+  visibility: hidden; /* modais fechados não são renderizados (antes 14 overlays com blur ficavam ativos invisíveis) */
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
 }
 
 .modal-overlay.active {
   opacity: 1;
+  visibility: visible;
   pointer-events: all;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: opacity 0.3s ease, visibility 0s;
 }
 
 .modal {

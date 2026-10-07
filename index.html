@@ -164,7 +164,7 @@
         <div class="glass-panel">
           <div style="display: flex; gap: 16px; margin-bottom: 16px;">
             <div class="input-group" style="flex: 2; margin: 0;">
-              <input type="text" id="search-users" class="input-control" placeholder="Buscar por nome ou login..." onkeyup="renderUsers()">
+              <input type="text" id="search-users" class="input-control" placeholder="Buscar por nome ou login..." oninput="renderUsersDebounced()">
             </div>
             <div class="input-group" style="flex: 1; margin: 0;">
               <select id="filter-users-role" class="input-control" onchange="renderUsers()">
@@ -328,7 +328,7 @@
 
           <div style="display: flex; gap: 16px; margin-bottom: 16px;">
             <div class="input-group" style="flex: 1; margin: 0;">
-              <input type="text" id="search-questions" class="input-control" placeholder="Buscar palavra na questão..." onkeyup="renderModuleQuestions()">
+              <input type="text" id="search-questions" class="input-control" placeholder="Buscar palavra na questão..." oninput="renderModuleQuestionsDebounced()">
             </div>
           </div>
           

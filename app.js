@@ -79,6 +79,17 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Debounce: evita consultas/re-renderizações a cada tecla digitada nas buscas
+function debounce(fn, delay = 300) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+window.renderUsersDebounced = debounce(() => window.renderUsers());
+window.renderModuleQuestionsDebounced = debounce(() => window.renderModuleQuestions());
+
 // Navigation Logic
 window.showView = async function(viewId) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
