@@ -385,7 +385,7 @@ document.getElementById('new-user-profile').addEventListener('change', (e) => {
     levelSelect.value = '-';
     levelSelect.disabled = true;
   } else {
-    levelSelect.innerHTML = '<option value="Pleno">Pleno</option><option value="Sênior">Sênior</option>';
+    levelSelect.innerHTML = '<option value="J\u00fanior">J\u00fanior</option><option value="Pleno">Pleno</option><option value="S\u00eanior">S\u00eanior</option>';
     levelSelect.disabled = false;
   }
 });
@@ -448,7 +448,12 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
     const updateData = { name, role, profile, level, team_id };
     
     // Atualiza os dados comuns (sem o email)
-    await supabase.from('users').update(updateData).eq('id', editingUserId);
+    const { error: updateError } = await supabase.from('users').update(updateData).eq('id', editingUserId);
+    if (updateError) {
+      console.error('Erro ao atualizar usuário:', updateError);
+      showToast('Erro ao atualizar usuário: ' + updateError.message, 'error');
+    }
+
     
     // Atualiza o e-mail de forma segura sincronizando os dois bancos (Auth e Public)
     const { error: emailError } = await supabase.rpc('update_user_email', {
@@ -519,6 +524,7 @@ window.editUser = async function(userId) {
   passInput.value = '';
   passInput.required = false;
   document.getElementById('new-user-role').value = user.role;
+  document.getElementById('new-user-role').dispatchEvent(new Event('change'));
   
   const profileSelect = document.getElementById('new-user-profile');
   profileSelect.value = user.profile;
@@ -527,7 +533,7 @@ window.editUser = async function(userId) {
   document.getElementById('new-user-level').value = user.level;
   document.getElementById('new-user-team').value = user.team_id || '';
   
-  document.getElementById('new-user-role').dispatchEvent(new Event('change'));
+  // order is important above to prevent level reset
   
   const submitBtn = document.querySelector('#user-form button[type="submit"]');
   if (submitBtn) submitBtn.innerText = 'Salvar Alterações';
