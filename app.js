@@ -447,11 +447,18 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
   if (editingUserId) {
     const updateData = { name, role, profile, level, team_id };
     
-    // Atualiza os dados comuns (sem o email)
-    const { error: updateError } = await supabase.from('users').update(updateData).eq('id', editingUserId);
+    const { error: updateError } = await supabase.rpc('update_user_data', {
+      p_user_id: editingUserId,
+      p_name: name,
+      p_role: role,
+      p_profile: profile,
+      p_level: level,
+      p_team_id: team_id
+    });
     if (updateError) {
       console.error('Erro ao atualizar usuário:', updateError);
       showToast('Erro ao atualizar usuário: ' + updateError.message, 'error');
+      return;
     }
 
     
@@ -2374,3 +2381,4 @@ document.getElementById('clear-auto-preview-btn')?.addEventListener('click', () 
   document.getElementById('parsed-result').classList.add('hidden');
   document.getElementById('preview-container').innerHTML = '';
 });
+
