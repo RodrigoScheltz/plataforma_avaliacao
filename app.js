@@ -434,11 +434,22 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
 
   if (editingUserId) {
-    const updateData = { name, email, role, profile, level, team_id };
+    const updateData = { name, role, profile, level, team_id };
     
-    // Atualiza os dados comuns
+    // Atualiza os dados comuns (sem o email)
     await supabase.from('users').update(updateData).eq('id', editingUserId);
     
+    // Atualiza o e-mail de forma segura sincronizando os dois bancos (Auth e Public)
+    const { error: emailError } = await supabase.rpc('update_user_email', {
+      p_user_id: editingUserId,
+      p_new_email: email
+    });
+
+    if (emailError) {
+      console.error('Erro ao atualizar e-mail:', emailError);
+      showToast('Erro ao atualizar e-mail: ' + emailError.message, 'error');
+    }
+
     // Se digitou uma nova senha, atualiza pelo RPC (Auth Oficial)
     if (password) {
       const { error: updError } = await supabase.rpc('update_user_password', {
