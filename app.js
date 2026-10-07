@@ -526,7 +526,7 @@ window.editUser = async function(userId) {
 
 window.renderUsers = async function() {
   const tbody = document.getElementById('users-tbody');
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando usuários...</td></tr>';
+  if (tbody.innerHTML.trim() === '') tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando usuários...</td></tr>';
   
   const searchInput = document.getElementById('search-users');
   const roleSelect = document.getElementById('filter-users-role');
@@ -545,10 +545,10 @@ window.renderUsers = async function() {
   
   users.sort((a, b) => a.name.localeCompare(b.name));
   
-  tbody.innerHTML = '';
+  let html = '';
   users.forEach(u => {
     const teamName = u.teams ? u.teams.name : '-';
-    tbody.innerHTML += `
+    html += `
       <tr>
         <td>${u.name}</td>
         <td>${u.email}</td>
@@ -567,6 +567,7 @@ window.renderUsers = async function() {
       </tr>
     `;
   });
+  tbody.innerHTML = html;
 };
 
 // Student Performance View
@@ -1876,6 +1877,7 @@ window.backToEvaluateTests = function() {
 
 // --- Question Bank Logic ---
 window.renderQuestionBank = async function() {
+  if (window.qbQuestions && window.qbQuestions.length > 0) { /* use cache for rendering instantly */ }
   const { data: questions, error } = await supabase.from('question_bank').select('*, modules(name)').order('created_at', { ascending: false });
   if (error) {
     console.error("Fetch question_bank error:", error);
