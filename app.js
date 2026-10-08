@@ -1161,10 +1161,10 @@ window.renderEvaluatorDashboard = async function() {
     }
     studentData[student.id].sum += perc;
     studentData[student.id].count += 1;
-    
-    if (student.profile && profileData[student.profile]) {
-      profileData[student.profile].sum += perc;
-      profileData[student.profile].count += 1;
+    const profileAtTime = sub.student_profile || student.profile;
+    if (profileAtTime && profileData[profileAtTime]) {
+      profileData[profileAtTime].sum += perc;
+      profileData[profileAtTime].count += 1;
     }
   });
 
@@ -1662,6 +1662,7 @@ async function submitTest(test) {
   const submission = {
     test_id: test.id,
     student_id: State.currentUser.id,
+    student_profile: State.currentUser.profile,
     answers,
     needs_grading: needsGrading,
     score
