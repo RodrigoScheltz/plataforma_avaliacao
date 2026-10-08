@@ -1154,18 +1154,24 @@ window.renderEvaluatorDashboard = async function() {
   
   mySubmissions.forEach(sub => {
     const student = allUsers.find(u => u.id === sub.student_id);
-    if (!student) return;
     
     const test = myTests.find(t => t.id === sub.test_id);
     const maxScore = test ? test.questions.length : 1;
     const perc = (sub.score / maxScore) * 100;
     
-    if (!studentData[student.id]) {
-      studentData[student.id] = { name: student.name, level: student.level, sum: 0, count: 0 };
+    const stId = sub.student_id || sub.student_name;
+    const stName = sub.student_name || (student ? student.name : 'Usuário Excluído');
+    const stLevel = student ? student.level : '-';
+    
+    if (stId) {
+      if (!studentData[stId]) {
+        studentData[stId] = { name: stName, level: stLevel, sum: 0, count: 0 };
+      }
+      studentData[stId].sum += perc;
+      studentData[stId].count += 1;
     }
-    studentData[student.id].sum += perc;
-    studentData[student.id].count += 1;
-    const profileAtTime = sub.student_profile || student.profile;
+    
+    const profileAtTime = sub.student_profile || (student ? student.profile : null);
     if (profileAtTime && profileData[profileAtTime]) {
       profileData[profileAtTime].sum += perc;
       profileData[profileAtTime].count += 1;
@@ -1667,6 +1673,7 @@ async function submitTest(test) {
     test_id: test.id,
     student_id: State.currentUser.id,
     student_profile: State.currentUser.profile,
+    student_name: State.currentUser.name,
     answers,
     needs_grading: needsGrading,
     score
@@ -1728,9 +1735,9 @@ window.viewStudentResult = async function(subId) {
   const { data: sub } = await supabase.from('submissions').select('*, tests(title, questions), users(name)').eq('id', subId).single();
   if (!sub) return;
   const test = sub.tests;
-  const student = sub.users;
+  const stName = sub.student_name || (sub.users ? sub.users.name : 'Usuário Excluído');
 
-  document.getElementById('result-test-title').innerText = `Resultado: ${test.title} (${student ? student.name : ''})`;
+  document.getElementById('result-test-title').innerText = `Resultado: ${test.title} (${stName})`;
   const container = document.getElementById('student-result-content');
   container.innerHTML = '';
   
