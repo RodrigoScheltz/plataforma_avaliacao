@@ -613,8 +613,12 @@ window.handleStudentSearch = function(value) {
 
 window.deleteUser = function(userId) {
   showConfirm('Atenção: Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.', async () => {
-    await supabase.from('submissions').delete().eq('student_id', userId);
-    await supabase.from('users').delete().eq('id', userId);
+    const { error } = await supabase.rpc('delete_user_account', { p_user_id: userId });
+    if (error) {
+      console.error('Erro ao excluir usuário:', error);
+      showToast('Erro ao excluir usuário: ' + error.message, 'error');
+      return;
+    }
     showToast('Usuário excluído com sucesso!', 'success');
     renderUsers();
   });
